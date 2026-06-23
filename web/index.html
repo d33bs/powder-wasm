@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b0b">
+  <meta name="description" content="POWDER — Jeff Lait's roguelike, an unofficial browser/WebAssembly port.">
+  <title>POWDER</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <span id="title">POWDER</span>
+      <div class="topbar-actions">
+        <button id="fullscreen-btn" type="button" aria-label="Toggle fullscreen" title="Fullscreen">⛶</button>
+        <button id="about-btn" type="button">About</button>
+      </div>
+    </header>
+
+    <div id="screen">
+      <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+      <div id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">Loading POWDER…</div>
+      </div>
+    </div>
+
+    <footer id="statusbar">
+      <span id="status">Initializing…</span>
+    </footer>
+  </div>
+
+  <!-- Attribution / About (required: clear credit to Jeff Lait & the original project) -->
+  <dialog id="about">
+    <h2>POWDER</h2>
+    <p>Created by <strong>Jeff Lait</strong>.</p>
+    <p>This is an <em>unofficial</em> browser / WebAssembly port of POWDER 1.18,
+       running entirely in your browser. The original game and its source are
+       © 2003–2009 Jeff Lait, used under the
+       Creative Commons Sampling Plus 1.0 license. No gameplay has been altered.</p>
+
+    <h3>Controls</h3>
+    <table class="controls">
+      <tr><td>Move</td><td>Arrow keys / WASD</td></tr>
+      <tr><td>Confirm</td><td>Enter</td></tr>
+      <tr><td>Wait a turn</td><td>Space</td></tr>
+      <tr><td>Inventory</td><td>i</td></tr>
+      <tr><td>Pick up</td><td>g</td></tr>
+      <tr><td>Menu / back</td><td>Esc</td></tr>
+    </table>
+    <p class="hint">Your game is saved automatically in this browser. Reload and
+       choose <strong>Load</strong> to continue.</p>
+
+    <p>Original project:
+       <a href="https://www.zincland.com/powder/" target="_blank" rel="noopener">zincland.com/powder</a>
+    </p>
+    <form method="dialog"><button type="submit">Close</button></form>
+  </dialog>
+
+  <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
+       The ?v query is a cache-buster; bump it when rebuilding during local dev.
+       (Production caching will be handled by the service worker in a later milestone.) -->
+  <script src="app.js?v=2"></script>
+  <script src="powder.js?v=2"></script>
+</body>
+</html>
