@@ -127,9 +127,9 @@ menu (**☰**) → *Controls* to choose:
 
 There's also a **fullscreen** button (**⛶**). Touch input is delivered to the
 engine as the same key events the keyboard produces, so gameplay is identical.
-Use **Actions** for a compact list of common POWDER commands—including Search,
-Look, Open, Run, Mini-map, and Help—and **Back** to cancel a prompt or return to
-the previous screen.
+Use **Actions** to open POWDER's in-game Command Menu, then move through the
+list and press **OK** to choose an action such as Search. Use **Back** to cancel
+the current prompt or return from the menu.
 
 ## Settings, saves & PWA
 

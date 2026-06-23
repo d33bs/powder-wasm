@@ -36,7 +36,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "15"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "16"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -182,25 +182,16 @@
   }
   Array.prototype.forEach.call(document.querySelectorAll(".dbtn, .abtn"), bindButton);
 
-  // --------------------------------------------------- Game actions sheet
-  var gameActionsDlg = $("game-actions");
+  // ------------------------------------------------ Native action menu
   var actionsBtn = $("actions-btn");
-  if (actionsBtn && gameActionsDlg) {
+  if (actionsBtn) {
     actionsBtn.addEventListener("pointerdown", function (e) {
       e.preventDefault();
-      if (gameActionsDlg.showModal) gameActionsDlg.showModal();
-    });
-    gameActionsDlg.addEventListener("close", focusGame);
-    Array.prototype.forEach.call(
-      gameActionsDlg.querySelectorAll(".game-action"),
-      function (btn) {
-        btn.addEventListener("click", function () {
-          var key = btn.getAttribute("data-game-key");
-          gameActionsDlg.close();
-          sendKey(key);
-        });
+      if (ready && Module.ccall) {
+        Module.ccall("powder_open_action_menu", null, [], []);
       }
-    );
+      focusGame();
+    });
   }
 
   // --------------------------------------------------- Tap / swipe to move

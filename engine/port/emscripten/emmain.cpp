@@ -46,6 +46,16 @@ powder_autosave()
     if (MOB::getAvatar() && !glbTutorial)
         saveGame(true);
 }
+
+// Queue POWDER's native Command Menu shortcut. Sending an uppercase key via
+// browser KeyboardEvent is unreliable in SDL 1's Emscripten shim because its
+// Unicode value depends on separately tracked modifier state. Going through
+// POWDER's keyboard queue preserves the normal in-game menu and input flow.
+extern "C" EMSCRIPTEN_KEEPALIVE void
+powder_open_action_menu()
+{
+    hamfake_insertKeyPress('V');
+}
 #endif
 
 int
