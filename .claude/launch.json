@@ -6,9 +6,18 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": [
         "-c",
-        "import sys\nsys.path=[p for p in sys.path if p not in ('','.')]\nimport os\nos.chdir('/tmp/powder-web')\nimport http.server,socketserver\nclass H(http.server.SimpleHTTPRequestHandler):\n    def end_headers(self):\n        self.send_header('Cache-Control','no-store')\n        http.server.SimpleHTTPRequestHandler.end_headers(self)\nH.extensions_map=dict(http.server.SimpleHTTPRequestHandler.extensions_map)\nH.extensions_map['.wasm']='application/wasm'\nsocketserver.TCPServer.allow_reuse_address=True\nsocketserver.TCPServer(('127.0.0.1',8765),H).serve_forever()"
+        "import sys\nsys.path=[p for p in sys.path if p not in ('','.')]\nimport os\nos.chdir('/tmp/powder-web')\nimport http.server,socketserver\nclass H(http.server.SimpleHTTPRequestHandler):\n    def end_headers(self):\n        self.send_header('Cache-Control','no-store')\n        super().end_headers()\nH.extensions_map=dict(http.server.SimpleHTTPRequestHandler.extensions_map)\nH.extensions_map['.wasm']='application/wasm'\nsocketserver.TCPServer.allow_reuse_address=True\nsocketserver.TCPServer(('127.0.0.1',8765),H).serve_forever()"
       ],
       "port": 8765
+    },
+    {
+      "name": "powder-ghpages",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-c",
+        "import sys\nsys.path=[p for p in sys.path if p not in ('','.')]\nimport os\nos.chdir('/tmp/ghpages')\nimport http.server,socketserver\nclass H(http.server.SimpleHTTPRequestHandler):\n    def end_headers(self):\n        self.send_header('Cache-Control','no-store')\n        super().end_headers()\nH.extensions_map=dict(http.server.SimpleHTTPRequestHandler.extensions_map)\nH.extensions_map['.wasm']='application/wasm'\nsocketserver.TCPServer.allow_reuse_address=True\nsocketserver.TCPServer(('127.0.0.1',8766),H).serve_forever()"
+      ],
+      "port": 8766
     }
   ]
 }

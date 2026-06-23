@@ -1,53 +1,45 @@
 /*
  * POWDER Web -- browser shell bootstrap.
  *
- * This script defines the Emscripten `Module` object BEFORE powder.js loads,
- * so it must appear first in index.html. It wires up the canvas, persistent
- * saves (IndexedDB via Emscripten IDBFS), and basic status/About UI.
+ * Defines the Emscripten `Module` before powder.js loads (must be first in
+ * index.html), then wires: persistent saves (IDBFS) + autosave, on-screen touch
+ * controls (D-pad / tap / swipe), a settings panel (control scheme, display &
+ * accessibility, save export/import/reset), fullscreen, and focus handling.
  *
- * The game engine itself is unmodified POWDER 1.18 (see NOTICE.md). All of the
- * browser integration lives here in the shell, isolated from gameplay logic.
+ * The POWDER engine is unmodified gameplay (see NOTICE.md); everything here is
+ * browser integration in the shell. Touch input is delivered to the engine as
+ * synthetic key events (POWDER reads arrows + digits 1-9 for 8-way movement).
  */
 (function () {
   "use strict";
 
-  var canvas = document.getElementById("canvas");
-  var statusEl = document.getElementById("status");
-  var loadingEl = document.getElementById("loading");
-  var loadingText = document.getElementById("loading-text");
-
-  function setStatus(text) {
-    if (statusEl && text) statusEl.textContent = text;
-  }
+  var $ = function (id) { return document.getElementById(id); };
+  var canvas = $("canvas");
+  var statusEl = $("status");
+  var loadingEl = $("loading");
+  var loadingText = $("loading-text");
+  var touchControls = $("touch-controls");
+  var dpad = $("dpad");
 
   var ready = false;
   var CONTROLS_HINT =
     "Move: Arrows / WASD  ·  Confirm: Enter  ·  Wait: Space  ·  Inventory: i  ·  Menu: Esc";
 
-  // POWDER (built without CHANGE_WORK_DIRECTORY) reads/writes its save and
-  // config files in the current working directory. We mount IndexedDB-backed
-  // storage there so saves survive reloads and work offline.
+  function setStatus(text) { if (statusEl && text) statusEl.textContent = text; }
+
   var SAVE_DIR = "/powder";
+  var ASSET_VERSION = "6"; // keep in sync with ?v= on script tags in index.html
 
-  // Cache-buster for powder.wasm (kept in sync with the ?v= on the script tags
-  // in index.html). Lets local rebuilds load fresh; harmless in production.
-  var ASSET_VERSION = "2";
-
+  // ----------------------------------------------------------------- Module
   var Module = {
     canvas: canvas,
     arguments: [],
-
-    // Route powder.wasm (and any data files) through the same cache-buster.
     locateFile: function (path, prefix) { return prefix + path + "?v=" + ASSET_VERSION; },
-
-    // Route engine stdout/stderr to the dev console.
     print: function () { console.log.apply(console, arguments); },
     printErr: function () { console.warn.apply(console, arguments); },
 
-    // Mount persistent storage and pull existing saves in BEFORE main() runs.
-    // POWDER reads its save file (powder.sav) during startup, so we must block
-    // the runtime on the IndexedDB restore via addRunDependency -- otherwise the
-    // engine boots against an empty save and the "Load" menu option never shows.
+    // Mount persistent storage and restore saves BEFORE main() runs (POWDER
+    // reads its save at startup; addRunDependency blocks main on the restore).
     preRun: [function () {
       try {
         FS.mkdir(SAVE_DIR);
@@ -55,12 +47,11 @@
         FS.chdir(SAVE_DIR);
         Module.addRunDependency("idbfs-load");
         FS.syncfs(true, function (err) {
-          if (err) console.warn("[powder] IDBFS initial load failed:", err);
+          if (err) console.warn("[powder] IDBFS load failed:", err);
           Module.removeRunDependency("idbfs-load");
         });
       } catch (e) {
-        console.warn("[powder] persistent-save setup failed; saves will not " +
-                     "persist this session:", e);
+        console.warn("[powder] persistent-save setup failed:", e);
       }
     }],
 
@@ -68,27 +59,22 @@
       ready = true;
       setStatus(CONTROLS_HINT);
       if (loadingEl) loadingEl.style.display = "none";
-      try { canvas.focus(); } catch (e) {}
+      focusGame();
     },
 
-    // Emscripten reports download/instantiation progress here (load phase only;
-    // once ready we keep the controls hint instead of letting it reset).
     setStatus: function (text) {
       if (loadingText && text) loadingText.textContent = text;
       if (!ready) setStatus(text || "Loading…");
     },
   };
-
-  // Expose for powder.js (loaded next) and for debugging.
   window.Module = Module;
 
-  // ---- Autosave + persist to IndexedDB -----------------------------------
-  // POWDER only writes a loadable save (savecount >= 1) on a clean quit or via
-  // the in-game Save menu. To avoid losing progress when a browser tab is just
-  // closed, we periodically trigger an engine-side checkpoint -- saveGame(true),
-  // the very call POWDER's Android suspend path uses -- then flush IDBFS to
-  // IndexedDB. The ccall only runs while the engine is idle (Asyncify yields in
-  // awaitEvent), and is a no-op unless a game is in progress, so it is safe.
+  function focusGame() { try { canvas.focus(); } catch (e) {} }
+
+  // -------------------------------------------------------------- Autosave
+  // POWDER only writes a loadable save on a clean quit; autosave via the
+  // engine's own saveGame(true) checkpoint (Android suspend path) so closing a
+  // tab doesn't lose progress. Safe: ccall only runs while the engine is idle.
   function syncToIDB() {
     if (typeof FS !== "undefined" && FS.syncfs) {
       try { FS.syncfs(false, function () {}); } catch (e) {}
@@ -106,27 +92,181 @@
     if (document.visibilityState === "hidden") autosave();
   });
 
-  function focusGame() {
-    try { canvas.focus(); } catch (e) {}
+  // ----------------------------------------------------- Key synthesis
+  var KEYCODES = {
+    ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39,
+    Enter: 13, Escape: 27, " ": 32, Backspace: 8,
+    "1": 49, "2": 50, "3": 51, "4": 52, "5": 53, "6": 54, "7": 55, "8": 56, "9": 57
+  };
+  function keyCodeFor(k) {
+    if (KEYCODES[k] != null) return KEYCODES[k];
+    return k.length === 1 ? k.toUpperCase().charCodeAt(0) : 0;
+  }
+  function codeFor(k) {
+    if (/^[a-z]$/i.test(k)) return "Key" + k.toUpperCase();
+    if (/^[0-9]$/.test(k)) return "Digit" + k;
+    if (k === " ") return "Space";
+    return k;
+  }
+  function sendKey(key) {
+    var kc = keyCodeFor(key);
+    var code = codeFor(key);
+    ["keydown", "keyup"].forEach(function (t) {
+      document.dispatchEvent(new KeyboardEvent(t, {
+        key: key, code: code, keyCode: kc, which: kc, bubbles: true, cancelable: true
+      }));
+    });
   }
 
-  // ---- About dialog ------------------------------------------------------
-  var aboutBtn = document.getElementById("about-btn");
-  var aboutDlg = document.getElementById("about");
-  if (aboutBtn && aboutDlg) {
-    aboutBtn.addEventListener("click", function () {
-      if (aboutDlg.showModal) aboutDlg.showModal();
+  // --------------------------------------------------- Touch buttons (D-pad)
+  function bindButton(btn) {
+    var key = btn.getAttribute("data-key");
+    btn.addEventListener("pointerdown", function (e) {
+      e.preventDefault();      // don't steal focus / no double-tap zoom
+      sendKey(key);
+    });
+    btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".dbtn, .abtn"), bindButton);
+
+  // --------------------------------------------------- Tap / swipe to move
+  var tapEnabled = false;
+  var tapStart = null;
+  function dirKeyFromDelta(dx, dy) {
+    var deg = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (deg < 0) deg += 360;
+    var idx = Math.round(deg / 45) % 8;
+    return ["ArrowRight", "3", "ArrowDown", "1", "ArrowLeft", "7", "ArrowUp", "9"][idx];
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    focusGame();
+    if (tapEnabled) tapStart = { x: e.clientX, y: e.clientY };
+  });
+  canvas.addEventListener("pointerup", function (e) {
+    if (!tapEnabled || !tapStart) return;
+    var rect = canvas.getBoundingClientRect();
+    var dx = e.clientX - tapStart.x, dy = e.clientY - tapStart.y;
+    if (Math.hypot(dx, dy) > 24) {
+      sendKey(dirKeyFromDelta(dx, dy));           // swipe
+    } else {
+      var tx = e.clientX - (rect.left + rect.width / 2);
+      var ty = e.clientY - (rect.top + rect.height / 2);
+      if (Math.hypot(tx, ty) < rect.width * 0.10) sendKey("5"); // tap centre = wait
+      else sendKey(dirKeyFromDelta(tx, ty));      // tap = step toward it
+    }
+    tapStart = null;
+  });
+
+  // ----------------------------------------------------------- Settings
+  var SETTINGS_KEY = "powder.settings";
+  function loadSettings() {
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function persistSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+  }
+  var settings = loadSettings();
+  if (!settings.scheme) settings.scheme = "auto";
+
+  var ctrlScheme = $("ctrl-scheme");
+  var optContrast = $("opt-contrast");
+  var optLargeText = $("opt-largetext");
+  var optReduceMotion = $("opt-reducemotion");
+
+  function isTouch() {
+    return ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+  }
+  function applySettings() {
+    document.body.classList.toggle("contrast", !!settings.contrast);
+    document.body.classList.toggle("large-text", !!settings.largetext);
+    document.body.classList.toggle("reduced-motion", !!settings.reducemotion);
+
+    var scheme = settings.scheme || "auto";
+    var show = scheme !== "off" && (scheme !== "auto" || isTouch());
+    touchControls.hidden = !show;
+    document.body.classList.toggle("controls-on", show);
+    dpad.style.display = (show && scheme === "tap") ? "none" : "";
+    tapEnabled = show && scheme === "tap";
+
+    if (ctrlScheme) ctrlScheme.value = scheme;
+    if (optContrast) optContrast.checked = !!settings.contrast;
+    if (optLargeText) optLargeText.checked = !!settings.largetext;
+    if (optReduceMotion) optReduceMotion.checked = !!settings.reducemotion;
+  }
+
+  if (ctrlScheme) ctrlScheme.addEventListener("change", function () {
+    settings.scheme = ctrlScheme.value; persistSettings(); applySettings(); focusGame();
+  });
+  function bindToggle(el, prop) {
+    if (!el) return;
+    el.addEventListener("change", function () {
+      settings[prop] = el.checked; persistSettings(); applySettings();
+    });
+  }
+  bindToggle(optContrast, "contrast");
+  bindToggle(optLargeText, "largetext");
+  bindToggle(optReduceMotion, "reducemotion");
+
+  applySettings();
+
+  // ----------------------------------------------------- Settings dialog
+  var settingsDlg = $("settings");
+  var menuBtn = $("menu-btn");
+  if (menuBtn && settingsDlg) {
+    menuBtn.addEventListener("click", function () {
+      if (settingsDlg.showModal) settingsDlg.showModal();
       this.blur();
     });
-    // When the dialog closes, return focus to the game (not the About button,
-    // which would otherwise swallow Enter/Space).
-    aboutDlg.addEventListener("close", focusGame);
+    settingsDlg.addEventListener("close", focusGame);
   }
 
-  // ---- Fullscreen toggle -------------------------------------------------
-  var fsBtn = document.getElementById("fullscreen-btn");
-  var appEl = document.getElementById("app");
-  function toggleFullscreen() {
+  // ----------------------------------------------------- Save management
+  function exportSave() {
+    try {
+      var data = FS.readFile(SAVE_DIR + "/powder.sav");
+      var blob = new Blob([data], { type: "application/octet-stream" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = "powder.sav";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    } catch (e) {
+      alert("No saved game to export yet — start a game first.");
+    }
+  }
+  function importSave(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        FS.writeFile(SAVE_DIR + "/powder.sav", new Uint8Array(reader.result));
+        FS.syncfs(false, function () { location.reload(); });
+      } catch (e) { alert("Import failed: " + e); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  function resetStorage() {
+    if (!confirm("Erase all saved games and settings in this browser? This cannot be undone.")) return;
+    try {
+      FS.readdir(SAVE_DIR).forEach(function (f) {
+        if (f !== "." && f !== "..") { try { FS.unlink(SAVE_DIR + "/" + f); } catch (e) {} }
+      });
+    } catch (e) {}
+    try { localStorage.removeItem(SETTINGS_KEY); } catch (e) {}
+    if (typeof FS !== "undefined" && FS.syncfs) FS.syncfs(false, function () { location.reload(); });
+    else location.reload();
+  }
+  var importInput = $("import-file");
+  if ($("save-export")) $("save-export").addEventListener("click", exportSave);
+  if ($("save-import")) $("save-import").addEventListener("click", function () { importInput && importInput.click(); });
+  if (importInput) importInput.addEventListener("change", function () {
+    if (importInput.files && importInput.files[0]) importSave(importInput.files[0]);
+  });
+  if ($("save-reset")) $("save-reset").addEventListener("click", resetStorage);
+
+  // ----------------------------------------------------- Fullscreen
+  var fsBtn = $("fullscreen-btn");
+  var appEl = $("app");
+  if (fsBtn) fsBtn.addEventListener("click", function () {
     var d = document;
     var active = d.fullscreenElement || d.webkitFullscreenElement;
     if (!active && appEl) {
@@ -136,29 +276,29 @@
       var exit = d.exitFullscreen || d.webkitExitFullscreen;
       if (exit) exit.call(d);
     }
-  }
-  if (fsBtn) {
-    fsBtn.addEventListener("click", function () {
-      toggleFullscreen();
-      this.blur();
-      focusGame();
-    });
-  }
+    this.blur(); focusGame();
+  });
 
-  // ---- Stop game keys from scrolling the page ----------------------------
-  // POWDER uses arrows/space; the browser would otherwise scroll. preventDefault
-  // cancels only the scroll, not delivery to the engine's document listener.
+  // ------------------------------------------ Stop game keys scrolling page
   var SCROLL_KEYS = {
     ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1,
     " ": 1, Spacebar: 1, PageUp: 1, PageDown: 1, Home: 1, End: 1
   };
   window.addEventListener("keydown", function (e) {
-    if (aboutDlg && aboutDlg.open) return;            // let the dialog have keys
+    if (settingsDlg && settingsDlg.open) return;
     var ae = document.activeElement;
-    if (ae && (ae.tagName === "BUTTON" || ae.tagName === "INPUT")) return;
+    if (ae && (ae.tagName === "BUTTON" || ae.tagName === "INPUT" || ae.tagName === "SELECT")) return;
     if (SCROLL_KEYS[e.key]) e.preventDefault();
   }, { capture: true });
 
-  // Keep keyboard focus on the game so keypresses reach POWDER.
   canvas.addEventListener("mousedown", focusGame);
+
+  // ----------------------------------------------------- PWA service worker
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("service-worker.js").catch(function (e) {
+        console.warn("[powder] service worker registration failed:", e);
+      });
+    });
+  }
 })();

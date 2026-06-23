@@ -7,7 +7,13 @@
   <meta name="theme-color" content="#0b0b0b">
   <meta name="description" content="POWDER — Jeff Lait's roguelike, an unofficial browser/WebAssembly port.">
   <title>POWDER</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="POWDER">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
   <div id="app">
@@ -15,7 +21,7 @@
       <span id="title">POWDER</span>
       <div class="topbar-actions">
         <button id="fullscreen-btn" type="button" aria-label="Toggle fullscreen" title="Fullscreen">⛶</button>
-        <button id="about-btn" type="button">About</button>
+        <button id="menu-btn" type="button" aria-label="Menu &amp; settings" title="Menu">☰</button>
       </div>
     </header>
 
@@ -27,42 +33,93 @@
       </div>
     </div>
 
+    <!-- On-screen touch controls (shown on touch devices / when enabled). -->
+    <div id="touch-controls" hidden>
+      <div id="dpad" aria-label="Movement pad">
+        <button class="dbtn" data-key="7" style="grid-area:nw" aria-label="Move up-left">↖</button>
+        <button class="dbtn" data-key="ArrowUp" aria-label="Move up" style="grid-area:n">↑</button>
+        <button class="dbtn" data-key="9" style="grid-area:ne" aria-label="Move up-right">↗</button>
+        <button class="dbtn" data-key="ArrowLeft" aria-label="Move left" style="grid-area:w">←</button>
+        <button class="dbtn center" data-key="5" style="grid-area:c" aria-label="Wait a turn">•</button>
+        <button class="dbtn" data-key="ArrowRight" aria-label="Move right" style="grid-area:e">→</button>
+        <button class="dbtn" data-key="1" style="grid-area:sw" aria-label="Move down-left">↙</button>
+        <button class="dbtn" data-key="ArrowDown" aria-label="Move down" style="grid-area:s">↓</button>
+        <button class="dbtn" data-key="3" style="grid-area:se" aria-label="Move down-right">↘</button>
+      </div>
+      <div id="action-buttons">
+        <button class="abtn" data-key="Enter" aria-label="Confirm / OK">OK</button>
+        <button class="abtn" data-key="g" aria-label="Pick up item">Get</button>
+        <button class="abtn" data-key="i" aria-label="Inventory">Inv</button>
+        <button class="abtn" data-key="Escape" aria-label="Menu / back">Menu</button>
+      </div>
+    </div>
+
     <footer id="statusbar">
       <span id="status">Initializing…</span>
     </footer>
   </div>
 
-  <!-- Attribution / About (required: clear credit to Jeff Lait & the original project) -->
-  <dialog id="about">
+  <!-- hidden file input used by Import Save -->
+  <input id="import-file" type="file" accept=".sav,application/octet-stream" hidden>
+
+  <!-- Menu / Settings -->
+  <dialog id="settings">
     <h2>POWDER</h2>
-    <p>Created by <strong>Jeff Lait</strong>.</p>
-    <p>This is an <em>unofficial</em> browser / WebAssembly port of POWDER 1.18,
-       running entirely in your browser. The original game and its source are
-       © 2003–2009 Jeff Lait, used under the
-       Creative Commons Sampling Plus 1.0 license. No gameplay has been altered.</p>
 
-    <h3>Controls</h3>
-    <table class="controls">
-      <tr><td>Move</td><td>Arrow keys / WASD</td></tr>
-      <tr><td>Confirm</td><td>Enter</td></tr>
-      <tr><td>Wait a turn</td><td>Space</td></tr>
-      <tr><td>Inventory</td><td>i</td></tr>
-      <tr><td>Pick up</td><td>g</td></tr>
-      <tr><td>Menu / back</td><td>Esc</td></tr>
-    </table>
-    <p class="hint">Your game is saved automatically in this browser. Reload and
-       choose <strong>Load</strong> to continue.</p>
+    <section>
+      <h3>Controls</h3>
+      <label class="row">
+        <span>On-screen controls</span>
+        <select id="ctrl-scheme">
+          <option value="auto">Auto (touch devices)</option>
+          <option value="dpad">D-pad + buttons</option>
+          <option value="tap">Tap / swipe to move</option>
+          <option value="off">Off (keyboard only)</option>
+        </select>
+      </label>
+    </section>
 
-    <p>Original project:
-       <a href="https://www.zincland.com/powder/" target="_blank" rel="noopener">zincland.com/powder</a>
-    </p>
-    <form method="dialog"><button type="submit">Close</button></form>
+    <section>
+      <h3>Display &amp; Accessibility</h3>
+      <label class="row"><span>High contrast</span><input type="checkbox" id="opt-contrast"></label>
+      <label class="row"><span>Larger text</span><input type="checkbox" id="opt-largetext"></label>
+      <label class="row"><span>Reduce motion</span><input type="checkbox" id="opt-reducemotion"></label>
+    </section>
+
+    <section>
+      <h3>Saves</h3>
+      <p class="hint">Your game autosaves to this browser. Reload and choose
+         <strong>Load</strong> to continue.</p>
+      <div class="btn-row">
+        <button id="save-export" type="button">Export…</button>
+        <button id="save-import" type="button">Import…</button>
+        <button id="save-reset" type="button" class="danger">Reset storage…</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>About</h3>
+      <p>POWDER is created by <strong>Jeff Lait</strong>. This is an unofficial
+         browser / WebAssembly port of POWDER 1.18, © 2003–2009 Jeff Lait, used
+         under the Creative Commons Sampling Plus 1.0 license. No gameplay has
+         been altered.</p>
+      <table class="controls">
+        <tr><td>Move</td><td>Arrows / WASD / numpad</td></tr>
+        <tr><td>Confirm</td><td>Enter</td></tr>
+        <tr><td>Wait</td><td>5 / Space</td></tr>
+        <tr><td>Inventory / Pick up</td><td>i / g</td></tr>
+        <tr><td>Menu / back</td><td>Esc</td></tr>
+      </table>
+      <p><a href="https://www.zincland.com/powder/" target="_blank" rel="noopener">zincland.com/powder</a></p>
+    </section>
+
+    <form method="dialog" class="close-row"><button type="submit">Close</button></form>
   </dialog>
 
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
-       (Production caching will be handled by the service worker in a later milestone.) -->
-  <script src="app.js?v=2"></script>
-  <script src="powder.js?v=2"></script>
+       (Production caching is handled by the service worker / versioned cache.) -->
+  <script src="app.js?v=6"></script>
+  <script src="powder.js?v=6"></script>
 </body>
 </html>
