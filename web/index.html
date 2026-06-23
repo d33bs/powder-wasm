@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="powder-wasm">
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <div id="app">
@@ -50,7 +50,7 @@
       </div>
       <div id="action-buttons">
         <button class="abtn" data-key="Enter" aria-label="Confirm / OK">OK</button>
-        <button class="abtn" data-key="V" aria-label="Command menu" title="Open all game commands">Actions</button>
+        <button class="abtn" id="actions-btn" type="button" aria-label="Game actions" title="Open game actions">Actions</button>
         <button class="abtn" data-key="g" aria-label="Pick up item">Get</button>
         <button class="abtn" data-key="i" aria-label="Inventory">Inv</button>
         <button class="abtn" data-key="Escape" aria-label="Back / cancel" title="Go back or cancel">Back</button>
@@ -64,6 +64,26 @@
 
   <!-- hidden file input used by Import Save -->
   <input id="import-file" type="file" accept=".sav,application/octet-stream" hidden>
+
+  <!-- Compact mobile command sheet for actions without dedicated controls. -->
+  <dialog id="game-actions">
+    <h2>Game actions</h2>
+    <div class="action-grid">
+      <button type="button" class="game-action" data-game-key="s">Search</button>
+      <button type="button" class="game-action" data-game-key="x">Look</button>
+      <button type="button" class="game-action" data-game-key="o">Open</button>
+      <button type="button" class="game-action" data-game-key="c">Close</button>
+      <button type="button" class="game-action" data-game-key="r">Run</button>
+      <button type="button" class="game-action" data-game-key="5">Wait</button>
+      <button type="button" class="game-action" data-game-key="g">Pick up</button>
+      <button type="button" class="game-action" data-game-key="i">Inventory</button>
+      <button type="button" class="game-action" data-game-key="m">Mini-map</button>
+      <button type="button" class="game-action" data-game-key="v">History</button>
+      <button type="button" class="game-action" data-game-key="?">Help</button>
+      <button type="button" class="game-action" data-game-key="O">Options</button>
+    </div>
+    <form method="dialog" class="close-row"><button type="submit">Back</button></form>
+  </dialog>
 
   <!-- Menu / Settings -->
   <dialog id="settings">
@@ -123,7 +143,7 @@
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
        (Production caching is handled by the service worker / versioned cache.) -->
-  <script src="app.js?v=13"></script>
-  <script src="powder.js?v=13"></script>
+  <script src="app.js?v=15"></script>
+  <script src="powder.js?v=15"></script>
 </body>
 </html>

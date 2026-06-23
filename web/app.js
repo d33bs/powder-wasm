@@ -36,7 +36,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "13"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "15"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -150,21 +150,30 @@
     if (k === " ") return "Space";
     return k;
   }
+  function dispatchKey(type, key, code, keyCode, shifted) {
+    document.dispatchEvent(new KeyboardEvent(type, {
+      key: key, code: code, keyCode: keyCode, which: keyCode,
+      shiftKey: shifted, bubbles: true, cancelable: true
+    }));
+  }
   function sendKey(key) {
     var kc = keyCodeFor(key);
     var code = codeFor(key);
     var shifted = /^[A-Z]$/.test(key);
-    ["keydown", "keyup"].forEach(function (t) {
-      document.dispatchEvent(new KeyboardEvent(t, {
-        key: key, code: code, keyCode: kc, which: kc, shiftKey: shifted,
-        bubbles: true, cancelable: true
-      }));
-    });
+
+    // Emscripten SDL1 derives character case from its tracked modifier state,
+    // not only KeyboardEvent.shiftKey. Emit the physical Shift transitions so
+    // uppercase shortcuts such as V reach POWDER as uppercase rather than v.
+    if (shifted) dispatchKey("keydown", "Shift", "ShiftLeft", 16, true);
+    dispatchKey("keydown", key, code, kc, shifted);
+    dispatchKey("keyup", key, code, kc, shifted);
+    if (shifted) dispatchKey("keyup", "Shift", "ShiftLeft", 16, false);
   }
 
   // --------------------------------------------------- Touch buttons (D-pad)
   function bindButton(btn) {
     var key = btn.getAttribute("data-key");
+    if (!key) return;
     btn.addEventListener("pointerdown", function (e) {
       e.preventDefault();      // don't steal focus / no double-tap zoom
       sendKey(key);
@@ -172,6 +181,27 @@
     btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   }
   Array.prototype.forEach.call(document.querySelectorAll(".dbtn, .abtn"), bindButton);
+
+  // --------------------------------------------------- Game actions sheet
+  var gameActionsDlg = $("game-actions");
+  var actionsBtn = $("actions-btn");
+  if (actionsBtn && gameActionsDlg) {
+    actionsBtn.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      if (gameActionsDlg.showModal) gameActionsDlg.showModal();
+    });
+    gameActionsDlg.addEventListener("close", focusGame);
+    Array.prototype.forEach.call(
+      gameActionsDlg.querySelectorAll(".game-action"),
+      function (btn) {
+        btn.addEventListener("click", function () {
+          var key = btn.getAttribute("data-game-key");
+          gameActionsDlg.close();
+          sendKey(key);
+        });
+      }
+    );
+  }
 
   // --------------------------------------------------- Tap / swipe to move
   var tapEnabled = false;

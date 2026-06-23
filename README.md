@@ -115,7 +115,7 @@ it once under **Settings → Pages → Source: GitHub Actions**.
 | Wait | `5` / Space |
 | Inventory | `i` |
 | Pick up | `g` |
-| Command menu (all actions) | `V` |
+| Command menu (keyboard) | `V` |
 | Back / cancel | Esc |
 
 **Touch (phones/tablets):** on-screen controls appear automatically. Open the
@@ -127,8 +127,9 @@ menu (**☰**) → *Controls* to choose:
 
 There's also a **fullscreen** button (**⛶**). Touch input is delivered to the
 engine as the same key events the keyboard produces, so gameplay is identical.
-Use **Actions** for POWDER's complete command list and **Back** to cancel a
-prompt or return to the previous screen.
+Use **Actions** for a compact list of common POWDER commands—including Search,
+Look, Open, Run, Mini-map, and Help—and **Back** to cancel a prompt or return to
+the previous screen.
 
 ## Settings, saves & PWA
 
