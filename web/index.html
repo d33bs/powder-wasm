@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="POWDER">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <div id="app">
@@ -26,7 +26,9 @@
     </header>
 
     <div id="screen">
-      <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+      <div id="game-frame">
+        <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+      </div>
       <div id="loading">
         <div class="spinner"></div>
         <div id="loading-text">Loading POWDER…</div>
@@ -119,7 +121,7 @@
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
        (Production caching is handled by the service worker / versioned cache.) -->
-  <script src="app.js?v=6"></script>
-  <script src="powder.js?v=6"></script>
+  <script src="app.js?v=10"></script>
+  <script src="powder.js?v=10"></script>
 </body>
 </html>

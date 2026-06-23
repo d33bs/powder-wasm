@@ -11,16 +11,17 @@
  * caches. The save data lives in IndexedDB (IDBFS), not here, so updating the
  * app never touches the player's saves.
  */
-var CACHE_VERSION = "v6";
+var CACHE_VERSION = "v10";
 var CACHE = "powder-" + CACHE_VERSION;
+var CACHE_PREFIX = "powder-";
 
 var SHELL = [
   "./",
   "./index.html",
-  "./app.js?v=6",
-  "./style.css?v=6",
-  "./powder.js?v=6",
-  "./powder.wasm?v=6",
+  "./app.js?v=10",
+  "./style.css?v=10",
+  "./powder.js?v=10",
+  "./powder.wasm?v=10",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/icon-192.png",
@@ -40,7 +41,11 @@ self.addEventListener("activate", function (e) {
   e.waitUntil(
     caches.keys()
       .then(function (keys) {
-        return Promise.all(keys.filter(function (k) { return k !== CACHE; })
+        // GitHub project sites share an origin. Never delete caches belonging
+        // to another application hosted under the same github.io account.
+        return Promise.all(keys.filter(function (k) {
+                                 return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE;
+                               })
                                .map(function (k) { return caches.delete(k); }));
       })
       .then(function () { return self.clients.claim(); })
@@ -54,9 +59,16 @@ self.addEventListener("fetch", function (e) {
 
   if (req.mode === "navigate") {
     e.respondWith(
-      fetch(req).catch(function () {
-        return caches.match("./index.html").then(function (r) { return r || caches.match("./"); });
-      })
+      fetch(req).then(function (resp) {
+        if (!resp || !resp.ok) {
+          return cachedShell().then(function (cached) { return cached || resp; });
+        }
+        var copy = resp.clone();
+        return caches.open(CACHE)
+          .then(function (c) { return c.put("./index.html", copy); })
+          .catch(function () {})
+          .then(function () { return resp; });
+      }).catch(cachedShell)
     );
     return;
   }
@@ -73,3 +85,9 @@ self.addEventListener("fetch", function (e) {
     })
   );
 });
+
+function cachedShell() {
+  return caches.match("./index.html").then(function (r) {
+    return r || caches.match("./");
+  });
+}

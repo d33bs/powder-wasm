@@ -537,13 +537,22 @@ rebuildVideoSystemFromGlobals()
 {
 #ifndef USE_VIRTUAL_SCREEN
     int		flags = SDL_RESIZABLE;
+    int		depth = 24;
 
     if (glbFullScreen)
 	flags |= SDL_FULLSCREEN;
 
-    // Yes, we want a guaranteed 24bit video mode.
+#ifdef __EMSCRIPTEN__
+    // Emscripten's SDL1 canvas surface is 32-bit. Request that format
+    // explicitly: treating it as the desktop port's packed 24-bit surface
+    // shifts the RGB channels by one byte per pixel and produces coloured
+    // vertical bands across the game.
+    depth = 32;
+#endif
+
+    // Use the packed 24-bit desktop mode or the browser's native 32-bit mode.
     glbVideoSurface = SDL_SetVideoMode(glbScreenWidth, glbScreenHeight, 
-				    24, flags);
+				    depth, flags);
 
     if (!glbVideoSurface)
     {
@@ -618,15 +627,20 @@ void
 scaleScreenFromPaletted(u8 *dst, int pitch)
 {
     int		x, y, s_y, s_x;
+    int		bytesperpixel = 3;
     u8		pixel[3];
     u16		idx;
     u16		*src;
+
+#ifdef __EMSCRIPTEN__
+    bytesperpixel = glbVideoSurface->format->BytesPerPixel;
+#endif
 
     // Clear initial dst...
     memset(dst, 0, pitch * glbScreenHeight);
 
     // Add in fudge factor
-    dst += glbScreenFudgeX * 3 + glbScreenFudgeY * pitch;
+    dst += glbScreenFudgeX * bytesperpixel + glbScreenFudgeY * pitch;
 
     src = glb_nativescreen;
     for (y = 0; y < HAM_SCRH; y++)
@@ -652,16 +666,25 @@ scaleScreenFromPaletted(u8 *dst, int pitch)
 		pixel[1] = glb_palette[idx*4+2];
 		pixel[2] = glb_palette[idx*4+1];
 #endif
+#ifdef __EMSCRIPTEN__
+		Uint32 mapped = SDL_MapRGB(glbVideoSurface->format,
+					  pixel[2], pixel[1], pixel[0]);
+#endif
 		// Now write out the needed number of times...
 		for (s_x = 0; s_x < glbScaleFactor; s_x++)
 		{
+#ifdef __EMSCRIPTEN__
+		    *(Uint32 *) dst = mapped;
+		    dst += bytesperpixel;
+#else
 		    *dst++ = pixel[0];
 		    *dst++ = pixel[1];
 		    *dst++ = pixel[2];
+#endif
 		}
 	    }
 	    // Add remainder of pitch.
-	    dst += pitch - 3 * glbScaleFactor * HAM_SCRW;
+	    dst += pitch - bytesperpixel * glbScaleFactor * HAM_SCRW;
 	}
 	src += HAM_SCRW;
     }
@@ -671,15 +694,20 @@ void
 scaleScreenFrom15bit(u8 *dst, int pitch)
 {
     int		 x, y, s_y, s_x;
+    int		 bytesperpixel = 3;
     u8		 pixel[3];
     u16		 raw;
     u16		*src;
+
+#ifdef __EMSCRIPTEN__
+    bytesperpixel = glbVideoSurface->format->BytesPerPixel;
+#endif
 
     // Clear initial dst...
     memset(dst, 0, pitch * glbScreenHeight);
 
     // Add in fudge factor
-    dst += glbScreenFudgeX * 3 + glbScreenFudgeY * pitch;
+    dst += glbScreenFudgeX * bytesperpixel + glbScreenFudgeY * pitch;
 
     src = glb_rawscreen;
     for (y = 0; y < HAM_SCRH; y++)
@@ -706,17 +734,26 @@ scaleScreenFrom15bit(u8 *dst, int pitch)
 		pixel[1] = ((raw >> 5) & 31) << 3;
 		pixel[2] = ((raw >> 10) & 31) << 3;
 #endif
+#ifdef __EMSCRIPTEN__
+		Uint32 mapped = SDL_MapRGB(glbVideoSurface->format,
+					  pixel[2], pixel[1], pixel[0]);
+#endif
 
 		// Now write out the needed number of times...
 		for (s_x = 0; s_x < glbScaleFactor; s_x++)
 		{
+#ifdef __EMSCRIPTEN__
+		    *(Uint32 *) dst = mapped;
+		    dst += bytesperpixel;
+#else
 		    *dst++ = pixel[0];
 		    *dst++ = pixel[1];
 		    *dst++ = pixel[2];
+#endif
 		}
 	    }
 	    // Add remainder of pitch.
-	    dst += pitch - 3 * glbScaleFactor * HAM_SCRW;
+	    dst += pitch - bytesperpixel * glbScaleFactor * HAM_SCRW;
 	}
 	src += HAM_SCRW;
     }

@@ -93,6 +93,10 @@ is byte-for-byte unaffected):**
   - `ham_StartIntHandler()` — skips registering the `SDL_AddTimer()` callback
     under Emscripten (the frame tick is driven from `hamfake_awaitEvent()`
     instead).
+  - `rebuildVideoSystemFromGlobals()` and the two screen-scaling functions —
+    use Emscripten SDL1's native 32-bit canvas surface and map RGB values into
+    its actual pixel format. The desktop path remains packed 24-bit. This
+    prevents byte-stride colour corruption in the browser framebuffer.
 
 All other files under `engine/` are upstream-verbatim. Files generated at build
 time (`glbdef.cpp`, `license.cpp`, `credits.cpp`, `encyclopedia.cpp`,

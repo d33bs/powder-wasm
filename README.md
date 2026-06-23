@@ -49,7 +49,7 @@ rather than changing the game:
 ```
 engine/                 POWDER 1.18 source (vendored verbatim) + the new port
   port/emscripten/        new: Emscripten entry point + Makefile (+ autosave hook)
-  port/sdl/hamfake.cpp    modified: #ifdef __EMSCRIPTEN__ browser yield only
+  port/sdl/hamfake.cpp    modified: browser yield + SDL canvas pixel format
 web/                    browser shell + build output
   index.html app.js style.css   shell (UI, touch controls, settings, saves)
   manifest.webmanifest          PWA manifest
@@ -75,7 +75,7 @@ NOTICE.md, LICENSE-NOTES.md, LICENSE
 ## Build
 
 ```bash
-./scripts/build.sh
+make build
 ```
 
 This (1) builds POWDER's native support tools, (2) generates the compiled-in game
@@ -87,10 +87,15 @@ stages the output into `web/`.
 The WASM must be served over HTTP (not `file://`):
 
 ```bash
-python3 scripts/serve.py          # serves web/ at http://127.0.0.1:8765
+make serve                        # serves web/ at http://127.0.0.1:8765
 ```
 
 Then open <http://127.0.0.1:8765>.
+
+`make preview` builds and serves in one command. Rerunning `make serve` or
+`make preview` safely replaces this project's previous preview server; use
+`make stop` to stop it explicitly. Override the port with, for example,
+`make serve PORT=8766`.
 
 ## Deploy
 
@@ -134,8 +139,10 @@ Open the menu (**☰**) for:
   own Android suspend-save; the save format and mechanics are unchanged.)
 
 **Install:** POWDER Web is a Progressive Web App — your browser will offer
-"Install" / "Add to Home Screen". Once loaded it works **offline** (the service
-worker caches the app shell and WebAssembly). Saves are per-browser.
+"Install" / "Add to Home Screen". After the first complete load it works
+**offline**: the service worker caches the full app and WebAssembly, and the app
+requests persistent browser storage to reduce automatic eviction. Saves are
+per-browser. Private-browsing modes may still discard storage when closed.
 
 ## License & attribution
 

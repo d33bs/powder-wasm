@@ -20,6 +20,8 @@
   var loadingText = $("loading-text");
   var touchControls = $("touch-controls");
   var dpad = $("dpad");
+  var screenEl = $("screen");
+  var gameFrame = $("game-frame");
 
   var ready = false;
   var CONTROLS_HINT =
@@ -28,7 +30,42 @@
   function setStatus(text) { if (statusEl && text) statusEl.textContent = text; }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "6"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "10"; // keep in sync with ?v= on script tags in index.html
+
+  // Center the complete 4:3 SDL surface. Portrait touch controls intentionally
+  // use a square crop so the playable area can span a narrow phone screen.
+  function fitGameFrame() {
+    if (!screenEl || !gameFrame) return;
+    var availableWidth = screenEl.clientWidth;
+    var availableHeight = screenEl.clientHeight;
+    if (availableWidth <= 0 || availableHeight <= 0) return;
+    var portrait = window.matchMedia ?
+      window.matchMedia("(orientation: portrait)").matches :
+      window.innerHeight > window.innerWidth;
+    var squareCrop = document.body.classList.contains("controls-on") && portrait;
+    var width, height;
+
+    if (squareCrop) {
+      width = height = Math.floor(Math.min(availableWidth, availableHeight));
+    } else if (availableWidth / availableHeight > 4 / 3) {
+      height = Math.floor(availableHeight);
+      width = Math.floor(height * 4 / 3);
+    } else {
+      width = Math.floor(availableWidth);
+      height = Math.floor(width * 3 / 4);
+    }
+    if (width > 0 && height > 0) {
+      gameFrame.style.width = width + "px";
+      gameFrame.style.height = height + "px";
+      gameFrame.classList.toggle("square-crop", squareCrop);
+    }
+  }
+  if (typeof ResizeObserver !== "undefined" && screenEl) {
+    new ResizeObserver(fitGameFrame).observe(screenEl);
+  } else {
+    window.addEventListener("resize", fitGameFrame);
+  }
+  fitGameFrame();
 
   // ----------------------------------------------------------------- Module
   var Module = {
@@ -59,6 +96,12 @@
       ready = true;
       setStatus(CONTROLS_HINT);
       if (loadingEl) loadingEl.style.display = "none";
+      // Ask the browser not to evict the app cache or IndexedDB saves under
+      // storage pressure. Browsers may decline based on their own policy, so
+      // offline play still relies on the service-worker cache either way.
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(function () {});
+      }
       focusGame();
     },
 
@@ -144,7 +187,7 @@
   });
   canvas.addEventListener("pointerup", function (e) {
     if (!tapEnabled || !tapStart) return;
-    var rect = canvas.getBoundingClientRect();
+    var rect = gameFrame ? gameFrame.getBoundingClientRect() : canvas.getBoundingClientRect();
     var dx = e.clientX - tapStart.x, dy = e.clientY - tapStart.y;
     if (Math.hypot(dx, dy) > 24) {
       sendKey(dirKeyFromDelta(dx, dy));           // swipe
@@ -187,6 +230,8 @@
     document.body.classList.toggle("controls-on", show);
     dpad.style.display = (show && scheme === "tap") ? "none" : "";
     tapEnabled = show && scheme === "tap";
+
+    fitGameFrame();
 
     if (ctrlScheme) ctrlScheme.value = scheme;
     if (optContrast) optContrast.checked = !!settings.contrast;

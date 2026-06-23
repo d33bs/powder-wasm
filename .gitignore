@@ -40,3 +40,4 @@ libstdc++.a
 
 # OS / editor cruft
 .DS_Store
+__pycache__/
