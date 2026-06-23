@@ -6,22 +6,22 @@
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0b0b0b">
   <meta name="description" content="POWDER — Jeff Lait's roguelike, an unofficial browser/WebAssembly port.">
-  <title>POWDER</title>
+  <title>powder-wasm</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icon-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="POWDER">
-  <link rel="stylesheet" href="style.css?v=11">
+  <meta name="apple-mobile-web-app-title" content="powder-wasm">
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
   <div id="app">
     <header id="topbar">
-      <span id="title">POWDER</span>
+      <span id="title">powder-wasm</span>
       <div class="topbar-actions">
         <button id="fullscreen-btn" type="button" aria-label="Toggle fullscreen" title="Fullscreen">⛶</button>
-        <button id="menu-btn" type="button" aria-label="Menu &amp; settings" title="Menu">☰</button>
+        <button id="menu-btn" type="button" aria-label="Web settings" title="Settings">⚙</button>
       </div>
     </header>
 
@@ -50,9 +50,10 @@
       </div>
       <div id="action-buttons">
         <button class="abtn" data-key="Enter" aria-label="Confirm / OK">OK</button>
+        <button class="abtn" data-key="V" aria-label="Command menu" title="Open all game commands">Actions</button>
         <button class="abtn" data-key="g" aria-label="Pick up item">Get</button>
         <button class="abtn" data-key="i" aria-label="Inventory">Inv</button>
-        <button class="abtn" data-key="Escape" aria-label="Menu / back">Menu</button>
+        <button class="abtn" data-key="Escape" aria-label="Back / cancel" title="Go back or cancel">Back</button>
       </div>
     </div>
 
@@ -66,7 +67,7 @@
 
   <!-- Menu / Settings -->
   <dialog id="settings">
-    <h2>POWDER</h2>
+    <h2>powder-wasm</h2>
 
     <section>
       <h3>Controls</h3>
@@ -110,7 +111,8 @@
         <tr><td>Confirm</td><td>Enter</td></tr>
         <tr><td>Wait</td><td>5 / Space</td></tr>
         <tr><td>Inventory / Pick up</td><td>i / g</td></tr>
-        <tr><td>Menu / back</td><td>Esc</td></tr>
+        <tr><td>Command menu</td><td>V</td></tr>
+        <tr><td>Back / cancel</td><td>Esc</td></tr>
       </table>
       <p><a href="https://www.zincland.com/powder/" target="_blank" rel="noopener">zincland.com/powder</a></p>
     </section>
@@ -121,7 +123,7 @@
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
        (Production caching is handled by the service worker / versioned cache.) -->
-  <script src="app.js?v=11"></script>
-  <script src="powder.js?v=11"></script>
+  <script src="app.js?v=13"></script>
+  <script src="powder.js?v=13"></script>
 </body>
 </html>

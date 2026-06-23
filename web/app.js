@@ -25,12 +25,18 @@
 
   var ready = false;
   var CONTROLS_HINT =
-    "Move: Arrows / WASD  ·  Confirm: Enter  ·  Wait: Space  ·  Inventory: i  ·  Menu: Esc";
+    "Move: Arrows / WASD  ·  Actions: V  ·  Back: Esc  ·  Inventory: i";
+  var TOUCH_CONTROLS_HINT = "Actions: all commands  ·  Back: cancel";
 
   function setStatus(text) { if (statusEl && text) statusEl.textContent = text; }
+  function updateControlsHint() {
+    if (!ready) return;
+    setStatus(document.body.classList.contains("controls-on") ?
+      TOUCH_CONTROLS_HINT : CONTROLS_HINT);
+  }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "11"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "13"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -87,7 +93,7 @@
 
     onRuntimeInitialized: function () {
       ready = true;
-      setStatus(CONTROLS_HINT);
+      updateControlsHint();
       if (loadingEl) loadingEl.style.display = "none";
       // Ask the browser not to evict the app cache or IndexedDB saves under
       // storage pressure. Browsers may decline based on their own policy, so
@@ -147,9 +153,11 @@
   function sendKey(key) {
     var kc = keyCodeFor(key);
     var code = codeFor(key);
+    var shifted = /^[A-Z]$/.test(key);
     ["keydown", "keyup"].forEach(function (t) {
       document.dispatchEvent(new KeyboardEvent(t, {
-        key: key, code: code, keyCode: kc, which: kc, bubbles: true, cancelable: true
+        key: key, code: code, keyCode: kc, which: kc, shiftKey: shifted,
+        bubbles: true, cancelable: true
       }));
     });
   }
@@ -225,6 +233,7 @@
     tapEnabled = show && scheme === "tap";
 
     fitGameFrame();
+    updateControlsHint();
 
     if (ctrlScheme) ctrlScheme.value = scheme;
     if (optContrast) optContrast.checked = !!settings.contrast;

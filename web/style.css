@@ -214,6 +214,7 @@ button:active { background: #2a2a2a; }
   flex: 0 0 auto;
 }
 .abtn { font-size: 0.95rem; padding: 8px 4px; }
+.abtn:last-child { grid-column: 1 / -1; }
 
 @media (orientation: landscape) {
   #dpad { width: min(38vh, 200px); }

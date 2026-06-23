@@ -1,6 +1,6 @@
 {
-  "name": "POWDER",
-  "short_name": "POWDER",
+  "name": "powder-wasm",
+  "short_name": "powder-wasm",
   "description": "Jeff Lait's roguelike — an unofficial browser / WebAssembly port.",
   "start_url": "./",
   "scope": "./",
