@@ -77,11 +77,11 @@ html, body {
   body.controls-on #app {
     grid-template-rows: auto auto 1fr auto;   /* top · game · controls · status */
   }
-  /* On mobile the square game frame spans the full width. */
+  /* On mobile the complete 4:3 game frame spans the full width. */
   body.controls-on #screen {
     width: 100%;
     height: auto;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 4 / 3;
     max-height: 70dvh;        /* keep room for controls on short screens */
     align-self: start;
     overflow: hidden;
@@ -154,12 +154,6 @@ button:active { background: #2a2a2a; }
   outline: none;
   touch-action: none;
 }
-#game-frame.square-crop #canvas {
-  /* On portrait touch layouts, fill the square frame with the left-hand
-     gameplay area and crop the trailing quarter of the 4:3 surface. */
-  width: 133.333333%;
-}
-
 #loading {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
