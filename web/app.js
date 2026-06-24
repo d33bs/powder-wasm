@@ -36,7 +36,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "18"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "19"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -171,16 +171,52 @@
   }
 
   // --------------------------------------------------- Touch buttons (D-pad)
+  var HOLD_DELAY_MS = 350;
+  var HOLD_REPEAT_MS = 120;
+  var activeHoldStop = null;
+
+  function stopActiveHold() {
+    if (activeHoldStop) activeHoldStop();
+  }
+
   function bindButton(btn) {
     var key = btn.getAttribute("data-key");
     if (!key) return;
     btn.addEventListener("pointerdown", function (e) {
       e.preventDefault();      // don't steal focus / no double-tap zoom
+      stopActiveHold();
       sendKey(key);
+
+      // POWDER movement is turn-based, so repeat complete key presses rather
+      // than holding a keydown state that could become stuck after a gesture.
+      if (key.indexOf("Arrow") === 0) {
+        var delayTimer = null;
+        var repeatTimer = null;
+        var stopHold = function () {
+          if (delayTimer !== null) clearTimeout(delayTimer);
+          if (repeatTimer !== null) clearInterval(repeatTimer);
+          delayTimer = repeatTimer = null;
+          if (activeHoldStop === stopHold) activeHoldStop = null;
+        };
+
+        activeHoldStop = stopHold;
+        try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+        delayTimer = setTimeout(function () {
+          sendKey(key);
+          repeatTimer = setInterval(function () { sendKey(key); }, HOLD_REPEAT_MS);
+        }, HOLD_DELAY_MS);
+      }
     });
+    btn.addEventListener("pointerup", stopActiveHold);
+    btn.addEventListener("pointercancel", stopActiveHold);
+    btn.addEventListener("lostpointercapture", stopActiveHold);
     btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   }
   Array.prototype.forEach.call(document.querySelectorAll(".dbtn, .abtn"), bindButton);
+  window.addEventListener("blur", stopActiveHold);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") stopActiveHold();
+  });
 
   // ------------------------------------------------ Native action menu
   var actionsBtn = $("actions-btn");
