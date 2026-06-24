@@ -8,7 +8,7 @@
  *
  * The POWDER engine is unmodified gameplay (see NOTICE.md); everything here is
  * browser integration in the shell. Touch input is delivered to the engine as
- * synthetic key events (POWDER reads arrows + digits 1-9 for 8-way movement).
+ * synthetic key events (POWDER uses four-way movement for normal characters).
  */
 (function () {
   "use strict";
@@ -36,7 +36,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "16"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "18"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -198,10 +198,12 @@
   var tapEnabled = false;
   var tapStart = null;
   function dirKeyFromDelta(dx, dy) {
-    var deg = Math.atan2(dy, dx) * 180 / Math.PI;
-    if (deg < 0) deg += 360;
-    var idx = Math.round(deg / 45) % 8;
-    return ["ArrowRight", "3", "ArrowDown", "1", "ArrowLeft", "7", "ArrowUp", "9"][idx];
+    // Normal POWDER characters cannot move diagonally. Resolve taps and
+    // swipes to their dominant axis so every gesture performs one valid turn.
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx < 0 ? "ArrowLeft" : "ArrowRight";
+    }
+    return dy < 0 ? "ArrowUp" : "ArrowDown";
   }
   canvas.addEventListener("pointerdown", function (e) {
     focusGame();

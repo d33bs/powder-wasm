@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="powder-wasm">
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
   <div id="app">
@@ -38,15 +38,11 @@
     <!-- On-screen touch controls (shown on touch devices / when enabled). -->
     <div id="touch-controls" hidden>
       <div id="dpad" aria-label="Movement pad">
-        <button class="dbtn" data-key="7" style="grid-area:nw" aria-label="Move up-left">↖</button>
         <button class="dbtn" data-key="ArrowUp" aria-label="Move up" style="grid-area:n">↑</button>
-        <button class="dbtn" data-key="9" style="grid-area:ne" aria-label="Move up-right">↗</button>
         <button class="dbtn" data-key="ArrowLeft" aria-label="Move left" style="grid-area:w">←</button>
         <button class="dbtn center" data-key="5" style="grid-area:c" aria-label="Wait a turn">•</button>
         <button class="dbtn" data-key="ArrowRight" aria-label="Move right" style="grid-area:e">→</button>
-        <button class="dbtn" data-key="1" style="grid-area:sw" aria-label="Move down-left">↙</button>
         <button class="dbtn" data-key="ArrowDown" aria-label="Move down" style="grid-area:s">↓</button>
-        <button class="dbtn" data-key="3" style="grid-area:se" aria-label="Move down-right">↘</button>
       </div>
       <div id="action-buttons">
         <button class="abtn" data-key="Enter" aria-label="Confirm / OK">OK</button>
@@ -123,7 +119,7 @@
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
        (Production caching is handled by the service worker / versioned cache.) -->
-  <script src="app.js?v=16"></script>
-  <script src="powder.js?v=16"></script>
+  <script src="app.js?v=18"></script>
+  <script src="powder.js?v=18"></script>
 </body>
 </html>
