@@ -36,7 +36,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "19"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "20"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -189,7 +189,7 @@
 
       // POWDER movement is turn-based, so repeat complete key presses rather
       // than holding a keydown state that could become stuck after a gesture.
-      if (key.indexOf("Arrow") === 0) {
+      if (key.indexOf("Arrow") === 0 || key === "5") {
         var delayTimer = null;
         var repeatTimer = null;
         var stopHold = function () {

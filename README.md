@@ -130,7 +130,8 @@ engine as the same key events the keyboard produces, so gameplay is identical.
 Use **Actions** to open POWDER's in-game Command Menu, then move through the
 list and press **OK** to choose an action such as Search. Use **Back** to cancel
 the current prompt or return from the menu. Hold a movement arrow to keep
-walking after a short delay; tap it for a single turn.
+walking, or hold **Wait** to pass turns, after a short delay. Tap either for a
+single turn.
 
 ## Settings, saves & PWA
 
