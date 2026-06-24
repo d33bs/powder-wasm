@@ -463,6 +463,13 @@ msg_askdir(const char *question, int &dx, int &dy, bool allowdiag)
 		found = false;
 	    break;
 	}
+
+#ifdef __EMSCRIPTEN__
+	// Browser input cannot be delivered while this synchronous prompt spins.
+	// Yield one frame so the next direction or cancel key can enter SDL's
+	// keyboard queue. Native SDL blocks/polls independently and needs no yield.
+	hamfake_awaitEvent();
+#endif
     }
 #else
     while (1)
