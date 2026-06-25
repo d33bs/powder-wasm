@@ -3617,8 +3617,33 @@ killAvatar()
 }
 
 void
+clearSavedGame()
+{
+    SRAMSTREAM		os(false);
+
+    hiscore_setsavecount(0);
+    hiscore_flagnewgame(false);
+    hiscore_save(os);
+
+    // Trigger non-GBA sessions to complete the save.
+    hamfake_endWritingSession();
+}
+
+void
 saveGame(bool withnoquit)
 {
+    MOB			*avatar;
+
+    avatar = MOB::getAvatar();
+    if (!avatar || avatar->getHP() <= 0)
+    {
+	clearSavedGame();
+	if (!withnoquit)
+	    msg_report("No living game to save.");
+	hamfake_clearKeyboardBuffer();
+	return;
+    }
+
     SRAMSTREAM		os(withnoquit);
 
     if (!withnoquit)
@@ -3856,6 +3881,7 @@ processOptions()
 		glbCurLevel->unregisterMob(avatar);
 		delete avatar;
 	    }
+	    clearSavedGame();
 	    glbFinishedASave = true;
 	    return;
 	}
@@ -6759,5 +6785,4 @@ main(void)
 
     return 0;
 }
-
 
