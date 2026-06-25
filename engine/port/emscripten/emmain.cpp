@@ -43,7 +43,8 @@
 extern "C" EMSCRIPTEN_KEEPALIVE void
 powder_autosave()
 {
-    if (MOB::getAvatar() && !glbTutorial)
+    MOB *avatar = MOB::getAvatar();
+    if (avatar && avatar->getHP() > 0 && !glbTutorial)
         saveGame(true);
 }
 

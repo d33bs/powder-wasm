@@ -605,6 +605,10 @@ glbVictoryScreen(bool didwin, const ATTACK_DEF *attack, MOB *src, ITEM *weapon)
 	didwin = true;
     }
 
+    // This run is terminal.  Preserve the score/options write below, but make
+    // sure the next boot sees no resumable game, matching roguelike death.
+    hiscore_setsavecount(0);
+
     // Report hiscore results.
     hiscore_addAndDisplayEntry(avatar, didwin, ischeater);
 
