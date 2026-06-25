@@ -13,17 +13,6 @@ in the browser with **no backend**, and deploys automatically to GitHub Pages.
 
 ---
 
-## Status
-
-| Milestone | State |
-|-----------|-------|
-| **1. Engine compiles & launches** | ✅ Title screen, new game, keyboard — verified |
-| **2. Save / load** | ✅ Autosave → IndexedDB → resume via **Load**, plus Export / Import / Reset in the menu |
-| **3. Touch controls + responsive** | ✅ 8-way D-pad + action buttons, or tap/swipe to move; portrait & landscape |
-| **4. PWA: offline + installable** | ✅ Web manifest + service worker (full app shell cached for offline), app icons |
-| **5. Accessibility** | ✅ High-contrast, larger-text, reduced-motion, 44px targets, always-visible controls help |
-| **6. Public release** | ✅ Docs, attribution, GitHub Pages workflow |
-
 ## How it works
 
 POWDER already abstracts its platform layer (a "fake HAM" over SDL). This port
@@ -121,7 +110,8 @@ it once under **Settings → Pages → Source: GitHub Actions**.
 **Touch (phones/tablets):** on-screen controls appear automatically. Open the
 menu (**☰**) → *Controls* to choose:
 
-- **D-pad + buttons** — an 8-way pad plus Confirm / Get / Inventory / Menu.
+- **D-pad + buttons** — cardinal movement plus Confirm / Get / Inventory /
+  Actions / Back.
 - **Tap / swipe to move** — tap or swipe toward an adjacent tile to step; tap
   the centre to wait. Action buttons remain on screen.
 
