@@ -109,6 +109,7 @@ bool		glbAutoRunEnabled = false;
 bool		glbAutoRunOpenSpace = false;
 bool		glbHasJustSearched = false;
 int		glbSearchCount = 0;
+int		glbInitialGod = GOD_AGNOSTIC;
 
 extern int glbMapCount;
 extern int glbMobCount;
@@ -429,7 +430,21 @@ loadOptions(SRAMSTREAM &is)
 	val = 0;
     gfx_switchfonts(val);
 
-    is.readRaw(glbAvatarName, 23);
+    // New-game setup preferences.  Older saves stored the avatar name
+    // immediately after the font byte; if this byte is not a legal god, treat
+    // it as the first byte of the old name and read the remaining 22 bytes.
+    is.readRaw((char *) &val, 1);
+    if (val < NUM_GODS)
+    {
+	glbInitialGod = val;
+	is.readRaw(glbAvatarName, 23);
+    }
+    else
+    {
+	glbInitialGod = GOD_AGNOSTIC;
+	glbAvatarName[0] = val;
+	is.readRaw(glbAvatarName + 1, 22);
+    }
     glbAvatarName[23] = 0;
 }
 
@@ -463,6 +478,9 @@ saveOptions(SRAMSTREAM &os)
     val = gfx_gettilesetmode(0) | (gfx_gettilesetmode(1) << 4);
     os.writeRaw((const char *) &val, 1);
     val = gfx_getfont();
+    os.writeRaw((const char *) &val, 1);
+
+    val = glbInitialGod;
     os.writeRaw((const char *) &val, 1);
 
     // Not necessarily null terminated!
@@ -1905,7 +1923,9 @@ intro_screen()
 	    }
 	    menu[NUM_GODS] = 0;
 
-	    static int	startgod = 0;
+	    if (glbInitialGod < 0 || glbInitialGod >= NUM_GODS)
+		glbInitialGod = GOD_AGNOSTIC;
+
 	    int		choice;
 	    while (1)
 	    {
@@ -1914,14 +1934,14 @@ intro_screen()
 
 		int		aorb, y;
 		gfx_printtext(5,3, "Initial God?");
-		choice = gfx_selectmenu(30 - 20, 4, menu, aorb, startgod);
+		choice = gfx_selectmenu(30 - 20, 4, menu, aorb, glbInitialGod);
 		for (y = 3; y < 19; y++)
 		    gfx_cleartextline(y);
 		if (choice >= 0)
 		    break;
 	    }
-	    startgod = choice;
-	    god = (GOD_NAMES) choice;
+	    glbInitialGod = choice;
+	    god = (GOD_NAMES) glbInitialGod;
 
 	    piety_setgod(god);
 	}
@@ -6785,4 +6805,3 @@ main(void)
 
     return 0;
 }
-
