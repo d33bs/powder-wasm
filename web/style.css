@@ -235,8 +235,8 @@ button:active { background: #2a2a2a; }
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
   grid-template-areas: "nw n ne" "w c e" "sw s se";
-  gap: 8px;
-  width: calc(min(54vw, 280px) * var(--control-scale));
+  gap: 4px;
+  width: calc(min(50vw, 252px) * var(--control-scale));
   aspect-ratio: 1 / 1;
   flex: 0 0 auto;
 }
@@ -274,7 +274,7 @@ button:active { background: #2a2a2a; }
 }
 
 @media (orientation: landscape) {
-  #dpad { width: calc(min(44vh, 240px) * var(--control-scale)); }
+  #dpad { width: calc(min(40vh, 220px) * var(--control-scale)); }
   #action-buttons { width: min(34vh, 170px); }
 }
 
