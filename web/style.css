@@ -27,6 +27,9 @@ body.contrast {
 
 /* Larger UI text. */
 body.large-text { --ui-scale: 1.25; }
+body.controls-compact { --control-scale: 0.88; }
+body.controls-large { --control-scale: 1.14; }
+body:not(.controls-compact):not(.controls-large) { --control-scale: 1; }
 
 * { box-sizing: border-box; }
 
@@ -102,6 +105,45 @@ html, body {
 
 #statusbar { justify-content: center; font-size: 0.7rem; color: var(--muted); }
 #status { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- First-run quick start ---- */
+#quickstart {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(54px + env(safe-area-inset-bottom));
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px;
+  border: 1px solid var(--btn-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+#quickstart[hidden] { display: none; }
+#quickstart h2 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+#quickstart p { margin: 0; color: var(--fg); font-size: 0.85rem; line-height: 1.35; }
+#quickstart button { flex: 0 0 auto; padding: 8px 14px; }
+
+@media (max-width: 520px) {
+  #quickstart {
+    align-items: stretch;
+    flex-direction: column;
+    top: calc(48px + env(safe-area-inset-top));
+    bottom: auto;
+  }
+}
 
 /* ---- Buttons (shared) ---- */
 button {
@@ -194,17 +236,29 @@ button:active { background: #2a2a2a; }
   grid-template-rows: repeat(3, 1fr);
   grid-template-areas: "nw n ne" "w c e" "sw s se";
   gap: 8px;
-  width: min(46vw, 240px);
+  width: calc(min(54vw, 280px) * var(--control-scale));
   aspect-ratio: 1 / 1;
   flex: 0 0 auto;
 }
 .dbtn {
-  font-size: 1.3rem;
+  font-size: 1.75rem;
+  font-weight: 700;
   padding: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--btn);
 }
-.dbtn.center { font-size: 1rem; color: var(--muted); }
+.dbtn.center {
+  justify-self: center;
+  align-self: center;
+  width: 52%;
+  height: 52%;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
 
 #action-buttons {
   display: grid;
@@ -214,10 +268,13 @@ button:active { background: #2a2a2a; }
   flex: 0 0 auto;
 }
 .abtn { font-size: 0.95rem; padding: 8px 4px; }
-.abtn:last-child { grid-column: 1 / -1; }
+.abtn:last-child {
+  grid-column: 1 / -1;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--btn-border));
+}
 
 @media (orientation: landscape) {
-  #dpad { width: min(38vh, 200px); }
+  #dpad { width: calc(min(44vh, 240px) * var(--control-scale)); }
   #action-buttons { width: min(34vh, 170px); }
 }
 

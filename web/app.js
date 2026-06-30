@@ -22,13 +22,28 @@
   var dpad = $("dpad");
   var screenEl = $("screen");
   var gameFrame = $("game-frame");
+  var quickstart = $("quickstart");
+  var quickstartDismiss = $("quickstart-dismiss");
+  var saveStateEl = $("save-state");
+  var offlineStateEl = $("offline-state");
+  var storageStateEl = $("storage-state");
+  var installBtn = $("install-btn");
 
   var ready = false;
+  var statusTimer = null;
   var CONTROLS_HINT =
     "Move: Arrows / WASD  ·  Actions: V  ·  Back: Esc  ·  Inventory: i";
   var TOUCH_CONTROLS_HINT = "Actions: all commands  ·  Back: cancel";
 
   function setStatus(text) { if (statusEl && text) statusEl.textContent = text; }
+  function setTransientStatus(text, ms) {
+    if (statusTimer !== null) clearTimeout(statusTimer);
+    setStatus(text);
+    statusTimer = setTimeout(function () {
+      statusTimer = null;
+      updateControlsHint();
+    }, ms || 4500);
+  }
   function updateControlsHint() {
     if (!ready) return;
     setStatus(document.body.classList.contains("controls-on") ?
@@ -36,7 +51,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "24"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "26"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -93,14 +108,21 @@
 
     onRuntimeInitialized: function () {
       ready = true;
+      document.title = "powder-wasm";
+      setTimeout(function () { document.title = "powder-wasm"; }, 0);
+      setTimeout(function () { document.title = "powder-wasm"; }, 1000);
       updateControlsHint();
       if (loadingEl) loadingEl.style.display = "none";
       // Ask the browser not to evict the app cache or IndexedDB saves under
       // storage pressure. Browsers may decline based on their own policy, so
       // offline play still relies on the service-worker cache either way.
       if (navigator.storage && navigator.storage.persist) {
-        navigator.storage.persist().catch(function () {});
+        navigator.storage.persist().then(updateStorageState).catch(updateStorageState);
       }
+      updateSaveState();
+      updateOfflineState();
+      updateStorageState();
+      maybeShowQuickstart();
       focusGame();
     },
 
@@ -127,6 +149,7 @@
       try { Module.ccall("powder_autosave", null, [], []); } catch (e) {}
     }
     syncToIDB();
+    updateSaveState();
   }
   setInterval(autosave, 15000);
   window.addEventListener("pagehide", autosave);
@@ -186,6 +209,9 @@
       e.preventDefault();      // don't steal focus / no double-tap zoom
       stopActiveHold();
       sendKey(key);
+      if (key === "Escape") {
+        setTransientStatus("Back cancels prompts and closes in-game menus.", 3000);
+      }
 
       // POWDER movement is turn-based, so repeat complete key presses rather
       // than holding a keydown state that could become stuck after a gesture.
@@ -226,6 +252,7 @@
       if (ready && Module.ccall) {
         Module.ccall("powder_open_action_menu", null, [], []);
       }
+      setTransientStatus("Actions: choose a command. If it asks for a direction, use arrows or Back.", 6000);
       focusGame();
     });
   }
@@ -262,6 +289,7 @@
 
   // ----------------------------------------------------------- Settings
   var SETTINGS_KEY = "powder.settings";
+  var QUICKSTART_KEY = "powder.quickstart.dismissed";
   function loadSettings() {
     try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; }
   }
@@ -270,8 +298,10 @@
   }
   var settings = loadSettings();
   if (!settings.scheme) settings.scheme = "auto";
+  if (!settings.controlsize) settings.controlsize = "comfortable";
 
   var ctrlScheme = $("ctrl-scheme");
+  var ctrlSize = $("ctrl-size");
   var optContrast = $("opt-contrast");
   var optLargeText = $("opt-largetext");
   var optReduceMotion = $("opt-reducemotion");
@@ -283,6 +313,8 @@
     document.body.classList.toggle("contrast", !!settings.contrast);
     document.body.classList.toggle("large-text", !!settings.largetext);
     document.body.classList.toggle("reduced-motion", !!settings.reducemotion);
+    document.body.classList.toggle("controls-compact", settings.controlsize === "compact");
+    document.body.classList.toggle("controls-large", settings.controlsize === "large");
 
     var scheme = settings.scheme || "auto";
     var show = scheme !== "off" && (scheme !== "auto" || isTouch());
@@ -295,6 +327,7 @@
     updateControlsHint();
 
     if (ctrlScheme) ctrlScheme.value = scheme;
+    if (ctrlSize) ctrlSize.value = settings.controlsize || "comfortable";
     if (optContrast) optContrast.checked = !!settings.contrast;
     if (optLargeText) optLargeText.checked = !!settings.largetext;
     if (optReduceMotion) optReduceMotion.checked = !!settings.reducemotion;
@@ -302,6 +335,9 @@
 
   if (ctrlScheme) ctrlScheme.addEventListener("change", function () {
     settings.scheme = ctrlScheme.value; persistSettings(); applySettings(); focusGame();
+  });
+  if (ctrlSize) ctrlSize.addEventListener("change", function () {
+    settings.controlsize = ctrlSize.value; persistSettings(); applySettings(); focusGame();
   });
   function bindToggle(el, prop) {
     if (!el) return;
@@ -320,6 +356,9 @@
   var menuBtn = $("menu-btn");
   if (menuBtn && settingsDlg) {
     menuBtn.addEventListener("click", function () {
+      updateSaveState();
+      updateOfflineState();
+      updateStorageState();
       if (settingsDlg.showModal) settingsDlg.showModal();
       this.blur();
     });
@@ -327,6 +366,35 @@
   }
 
   // ----------------------------------------------------- Save management
+  function readSaveCount() {
+    try {
+      var data = FS.readFile(SAVE_DIR + "/powder.sav");
+      if (!data || data.length < 8) return null;
+      if (String.fromCharCode(data[0], data[1], data[2], data[3], data[4], data[5]) !== "POWDER") {
+        return null;
+      }
+      return data[7];
+    } catch (e) {
+      return null;
+    }
+  }
+  function updateSaveState() {
+    if (!saveStateEl) return;
+    if (!ready || typeof FS === "undefined") {
+      saveStateEl.textContent = "Checking save state…";
+      return;
+    }
+    var count = readSaveCount();
+    if (count === null) {
+      saveStateEl.textContent = "No saved data in this browser yet.";
+    } else if (count === 0) {
+      saveStateEl.textContent = "No active run to Load. Scores and settings are still saved.";
+    } else if (count === 1) {
+      saveStateEl.textContent = "Active run saved. Reload and choose Load to resume.";
+    } else {
+      saveStateEl.textContent = "Active run saved after a prior Load; POWDER may mark it as save-scummed.";
+    }
+  }
   function exportSave() {
     try {
       var data = FS.readFile(SAVE_DIR + "/powder.sav");
@@ -369,6 +437,69 @@
   });
   if ($("save-reset")) $("save-reset").addEventListener("click", resetStorage);
 
+  // ----------------------------------------------------- Quick start
+  function maybeShowQuickstart() {
+    if (!quickstart) return;
+    try {
+      if (localStorage.getItem(QUICKSTART_KEY)) return;
+    } catch (e) {}
+    quickstart.hidden = false;
+  }
+  if (quickstartDismiss && quickstart) {
+    quickstartDismiss.addEventListener("click", function () {
+      quickstart.hidden = true;
+      try { localStorage.setItem(QUICKSTART_KEY, "1"); } catch (e) {}
+      focusGame();
+    });
+  }
+
+  // ----------------------------------------------------- Offline / install
+  var installPromptEvent = null;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    installPromptEvent = e;
+    if (installBtn) installBtn.hidden = false;
+  });
+  if (installBtn) {
+    installBtn.addEventListener("click", function () {
+      if (!installPromptEvent) return;
+      installPromptEvent.prompt();
+      installPromptEvent.userChoice.finally(function () {
+        installPromptEvent = null;
+        installBtn.hidden = true;
+        focusGame();
+      });
+    });
+  }
+  function updateOfflineState() {
+    if (!offlineStateEl) return;
+    if (!("caches" in window)) {
+      offlineStateEl.textContent = "Offline cache is not available in this browser.";
+      return;
+    }
+    caches.match("powder.wasm?v=" + ASSET_VERSION).then(function (hit) {
+      offlineStateEl.textContent = hit ?
+        "Offline cache ready: the app shell and WebAssembly are cached." :
+        "Offline cache is warming up. Leave this page open until loading finishes.";
+    }).catch(function () {
+      offlineStateEl.textContent = "Offline cache status is unavailable.";
+    });
+  }
+  function updateStorageState() {
+    if (!storageStateEl) return;
+    if (!navigator.storage || !navigator.storage.persisted) {
+      storageStateEl.textContent = "Persistent storage status is unavailable.";
+      return;
+    }
+    navigator.storage.persisted().then(function (persisted) {
+      storageStateEl.textContent = persisted ?
+        "Browser storage is persistent." :
+        "Browser storage is usable, but the browser may evict it under storage pressure.";
+    }).catch(function () {
+      storageStateEl.textContent = "Persistent storage status is unavailable.";
+    });
+  }
+
   // ----------------------------------------------------- Fullscreen
   var fsBtn = $("fullscreen-btn");
   var appEl = $("app");
@@ -402,9 +533,13 @@
   // ----------------------------------------------------- PWA service worker
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("service-worker.js").catch(function (e) {
-        console.warn("[powder] service worker registration failed:", e);
-      });
+      navigator.serviceWorker.register("service-worker.js")
+        .then(function () { return navigator.serviceWorker.ready; })
+        .then(updateOfflineState)
+        .catch(function (e) {
+          console.warn("[powder] service worker registration failed:", e);
+          updateOfflineState();
+        });
     });
   }
 })();

@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="powder-wasm">
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
   <div id="app">
@@ -56,6 +56,16 @@
     <footer id="statusbar">
       <span id="status">Initializing…</span>
     </footer>
+
+    <section id="quickstart" aria-labelledby="quickstart-title" hidden>
+      <div>
+        <h2 id="quickstart-title">Quick start</h2>
+        <p>Move with arrows or the D-pad. Use <strong>Actions</strong> for
+           commands like Search, Open, and Close. <strong>Back</strong> cancels
+           prompts. Death is permanent; Load only resumes active runs.</p>
+      </div>
+      <button id="quickstart-dismiss" type="button">Got it</button>
+    </section>
   </div>
 
   <!-- hidden file input used by Import Save -->
@@ -76,6 +86,14 @@
           <option value="off">Off (keyboard only)</option>
         </select>
       </label>
+      <label class="row">
+        <span>Control size</span>
+        <select id="ctrl-size">
+          <option value="comfortable">Comfortable</option>
+          <option value="large">Large</option>
+          <option value="compact">Compact</option>
+        </select>
+      </label>
     </section>
 
     <section>
@@ -87,12 +105,23 @@
 
     <section>
       <h3>Saves</h3>
-      <p class="hint">Your game autosaves to this browser. Reload and choose
-         <strong>Load</strong> to continue.</p>
+      <p id="save-state" class="hint">Checking save state…</p>
+      <p class="hint">Active runs autosave to this browser. Reload and choose
+         <strong>Load</strong> to continue. Death or Quit removes the active
+         run from Load.</p>
       <div class="btn-row">
         <button id="save-export" type="button">Export…</button>
         <button id="save-import" type="button">Import…</button>
         <button id="save-reset" type="button" class="danger">Reset storage…</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>Offline</h3>
+      <p id="offline-state" class="hint">Checking offline cache…</p>
+      <p id="storage-state" class="hint">Checking browser storage…</p>
+      <div class="btn-row">
+        <button id="install-btn" type="button" hidden>Install app</button>
       </div>
     </section>
 
@@ -119,7 +148,7 @@
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
        (Production caching is handled by the service worker / versioned cache.) -->
-  <script src="app.js?v=24"></script>
-  <script src="powder.js?v=24"></script>
+  <script src="app.js?v=26"></script>
+  <script src="powder.js?v=26"></script>
 </body>
 </html>
