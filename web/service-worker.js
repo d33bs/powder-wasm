@@ -11,17 +11,17 @@
  * caches. The save data lives in IndexedDB (IDBFS), not here, so updating the
  * app never touches the player's saves.
  */
-var CACHE_VERSION = "v29";
+var CACHE_VERSION = "v30";
 var CACHE = "powder-" + CACHE_VERSION;
 var CACHE_PREFIX = "powder-";
 
 var SHELL = [
   "./",
   "./index.html",
-  "./app.js?v=29",
-  "./style.css?v=29",
-  "./powder.js?v=29",
-  "./powder.wasm?v=29",
+  "./app.js?v=30",
+  "./style.css?v=30",
+  "./powder.js?v=30",
+  "./powder.wasm?v=30",
   "./manifest.webmanifest",
   "./assets/icon.svg",
   "./assets/icon-192.png",

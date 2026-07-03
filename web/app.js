@@ -55,7 +55,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "29"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "30"; // keep in sync with ?v= on script tags in index.html
 
   function describeError(error) {
     if (!error) return "";
@@ -80,6 +80,30 @@
     }
     if (crashRecovery) crashRecovery.hidden = false;
     if (restartAppBtn) restartAppBtn.focus();
+  }
+
+  function shouldShowGlobalRecovery(error) {
+    if (crashed || !ready) return false;
+
+    var message = describeError(error).toLowerCase();
+    if (!message) return false;
+
+    // Installed/PWA browser surfaces can emit unrelated recoverable errors
+    // during startup, install-prompt handling, or layout.  Those should not
+    // block the game behind a restart prompt.
+    if (message.indexOf("resizeobserver") !== -1) return false;
+    if (message.indexOf("aborterror") !== -1) return false;
+    if (message.indexOf("notallowederror") !== -1) return false;
+    if (message.indexOf("userchoice") !== -1) return false;
+
+    return message.indexOf("runtimeerror") !== -1 ||
+           message.indexOf("wasm") !== -1 ||
+           message.indexOf("webassembly") !== -1 ||
+           message.indexOf("memory access") !== -1 ||
+           message.indexOf("out of bounds") !== -1 ||
+           message.indexOf("unreachable") !== -1 ||
+           message.indexOf("asyncify") !== -1 ||
+           message.indexOf("abort(") !== -1;
   }
 
   function callPowder(name) {
@@ -515,10 +539,14 @@
   }
 
   window.addEventListener("error", function (e) {
-    showCrashRecovery(e.error || e.message || "Unexpected runtime error.");
+    var error = e.error || e.message || "Unexpected runtime error.";
+    if (shouldShowGlobalRecovery(error)) showCrashRecovery(error);
+    else console.warn("[powder] non-fatal browser error:", error);
   });
   window.addEventListener("unhandledrejection", function (e) {
-    showCrashRecovery(e.reason || "Unexpected async runtime error.");
+    var error = e.reason || "Unexpected async runtime error.";
+    if (shouldShowGlobalRecovery(error)) showCrashRecovery(error);
+    else console.warn("[powder] non-fatal async browser error:", error);
   });
 
   // ----------------------------------------------------- Quick start
