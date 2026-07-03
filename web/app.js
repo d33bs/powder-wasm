@@ -28,8 +28,12 @@
   var offlineStateEl = $("offline-state");
   var storageStateEl = $("storage-state");
   var installBtn = $("install-btn");
+  var crashRecovery = $("crash-recovery");
+  var crashReason = $("crash-reason");
+  var restartAppBtn = $("restart-app");
 
   var ready = false;
+  var crashed = false;
   var statusTimer = null;
   var CONTROLS_HINT =
     "Move: Arrows / WASD  ·  Actions: V  ·  Back: Esc  ·  Inventory: i";
@@ -51,7 +55,43 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "27"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "29"; // keep in sync with ?v= on script tags in index.html
+
+  function describeError(error) {
+    if (!error) return "";
+    if (typeof error === "string") return error;
+    if (error.message) return error.message;
+    try { return String(error); } catch (e) { return ""; }
+  }
+
+  function showCrashRecovery(error) {
+    if (crashed) return;
+    crashed = true;
+    ready = false;
+    document.body.classList.add("runtime-crashed");
+    try { stopActiveHold(); } catch (e) {}
+    try { syncToIDB(); } catch (e) {}
+    if (loadingEl) loadingEl.style.display = "none";
+    if (quickstart) quickstart.hidden = true;
+    setStatus("The game runtime stopped. Restart the app to continue.");
+    if (crashReason) {
+      var reason = describeError(error);
+      crashReason.textContent = reason ? "Details: " + reason : "";
+    }
+    if (crashRecovery) crashRecovery.hidden = false;
+    if (restartAppBtn) restartAppBtn.focus();
+  }
+
+  function callPowder(name) {
+    if (crashed || !ready || !Module.ccall) return false;
+    try {
+      Module.ccall(name, null, [], []);
+      return true;
+    } catch (e) {
+      showCrashRecovery(e);
+      return false;
+    }
+  }
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -88,6 +128,7 @@
     locateFile: function (path, prefix) { return prefix + path + "?v=" + ASSET_VERSION; },
     print: function () { console.log.apply(console, arguments); },
     printErr: function () { console.warn.apply(console, arguments); },
+    onAbort: function (reason) { showCrashRecovery(reason || "Runtime aborted."); },
 
     // Mount persistent storage and restore saves BEFORE main() runs (POWDER
     // reads its save at startup; addRunDependency blocks main on the restore).
@@ -145,9 +186,7 @@
     }
   }
   function autosave() {
-    if (ready && Module.ccall) {
-      try { Module.ccall("powder_autosave", null, [], []); } catch (e) {}
-    }
+    if (ready && Module.ccall) callPowder("powder_autosave");
     syncToIDB();
     updateSaveState();
   }
@@ -197,6 +236,7 @@
   var HOLD_DELAY_MS = 350;
   var HOLD_REPEAT_MS = 120;
   var activeHoldStop = null;
+  var actionMenuLikelyOpen = false;
 
   function stopActiveHold() {
     if (activeHoldStop) activeHoldStop();
@@ -210,7 +250,11 @@
       stopActiveHold();
       sendKey(key);
       if (key === "Escape") {
+        actionMenuLikelyOpen = false;
         setTransientStatus("Back cancels prompts and closes in-game menus.", 3000);
+      }
+      if (key === "Enter" || key.indexOf("Arrow") === 0 || key === "5") {
+        actionMenuLikelyOpen = false;
       }
 
       // POWDER movement is turn-based, so repeat complete key presses rather
@@ -249,12 +293,35 @@
   if (actionsBtn) {
     actionsBtn.addEventListener("pointerdown", function (e) {
       e.preventDefault();
-      if (ready && Module.ccall) {
-        Module.ccall("powder_open_action_menu", null, [], []);
-      }
+      stopActiveHold();
+      callPowder("powder_open_action_menu");
+      actionMenuLikelyOpen = true;
       setTransientStatus("Actions: choose a command. If it asks for a direction, use arrows or Back.", 6000);
       focusGame();
     });
+  }
+
+  var inventoryBtn = $("inventory-btn");
+  if (inventoryBtn) {
+    inventoryBtn.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      stopActiveHold();
+
+      // In POWDER's command list, the keyboard `i` key means "info/bind this
+      // action", not inventory.  If the user taps Actions then Inv, cancel the
+      // action list instead of accidentally entering the binding flow.
+      if (actionMenuLikelyOpen) {
+        setTimeout(function () { sendKey("Escape"); }, 120);
+        actionMenuLikelyOpen = false;
+        setTransientStatus("Closing Actions. Tap Inv again to open inventory.", 3500);
+      } else if (callPowder("powder_open_inventory")) {
+        // Native queue path succeeded.
+      } else if (!crashed) {
+        sendKey("i");
+      }
+      focusGame();
+    });
+    inventoryBtn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   }
 
   // --------------------------------------------------- Tap / swipe to move
@@ -436,6 +503,23 @@
     if (importInput.files && importInput.files[0]) importSave(importInput.files[0]);
   });
   if ($("save-reset")) $("save-reset").addEventListener("click", resetStorage);
+
+  if (restartAppBtn) {
+    restartAppBtn.addEventListener("click", function () {
+      restartAppBtn.disabled = true;
+      restartAppBtn.textContent = "Restarting…";
+      setStatus("Restarting from local app cache if available…");
+      try { syncToIDB(); } catch (e) {}
+      window.location.reload();
+    });
+  }
+
+  window.addEventListener("error", function (e) {
+    showCrashRecovery(e.error || e.message || "Unexpected runtime error.");
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    showCrashRecovery(e.reason || "Unexpected async runtime error.");
+  });
 
   // ----------------------------------------------------- Quick start
   function maybeShowQuickstart() {

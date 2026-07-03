@@ -145,6 +145,39 @@ html, body {
   }
 }
 
+/* ---- Runtime recovery ---- */
+#crash-recovery {
+  position: fixed;
+  inset: auto max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  z-index: 20;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 16px;
+  border: 1px solid var(--danger);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.65);
+}
+#crash-recovery[hidden] { display: none; }
+#crash-recovery h2 {
+  margin: 0 0 8px;
+  color: #ff9a8f;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+#crash-recovery p { margin: 8px 0; line-height: 1.4; }
+#crash-recovery .btn-row { margin-top: 12px; }
+#restart-app {
+  min-width: 9rem;
+  border-color: var(--accent);
+  color: var(--fg);
+}
+body.runtime-crashed #touch-controls,
+body.runtime-crashed #canvas {
+  pointer-events: none;
+}
+
 /* ---- Buttons (shared) ---- */
 button {
   font-family: inherit;

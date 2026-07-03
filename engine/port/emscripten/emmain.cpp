@@ -57,6 +57,15 @@ powder_open_action_menu()
 {
     hamfake_insertKeyPress('V');
 }
+
+// Queue POWDER's native inventory shortcut through the same path as the
+// Actions button.  This keeps mobile shell buttons from mixing browser
+// KeyboardEvent synthesis with direct engine queue insertion.
+extern "C" EMSCRIPTEN_KEEPALIVE void
+powder_open_inventory()
+{
+    hamfake_insertKeyPress('i');
+}
 #endif
 
 int
