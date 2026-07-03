@@ -18,6 +18,8 @@
   var statusEl = $("status");
   var loadingEl = $("loading");
   var loadingText = $("loading-text");
+  var loadingProgress = $("loading-progress");
+  var loadingHelp = $("loading-help");
   var touchControls = $("touch-controls");
   var dpad = $("dpad");
   var screenEl = $("screen");
@@ -55,7 +57,17 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "30"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "32"; // keep in sync with ?v= on script tags in index.html
+
+  function setLoading(text, value, help) {
+    if (loadingText && text) loadingText.textContent = text;
+    if (loadingProgress && typeof value === "number") {
+      loadingProgress.value = value;
+      loadingProgress.setAttribute("value", String(value));
+    }
+    if (loadingHelp && help) loadingHelp.textContent = help;
+    if (!ready && text) setStatus(text);
+  }
 
   function describeError(error) {
     if (!error) return "";
@@ -158,16 +170,19 @@
     // reads its save at startup; addRunDependency blocks main on the restore).
     preRun: [function () {
       try {
+        setLoading("Opening saved game storage…", 18, "This works offline after the app has been cached.");
         FS.mkdir(SAVE_DIR);
         FS.mount(IDBFS, {}, SAVE_DIR);
         FS.chdir(SAVE_DIR);
         Module.addRunDependency("idbfs-load");
         FS.syncfs(true, function (err) {
           if (err) console.warn("[powder] IDBFS load failed:", err);
+          setLoading("Starting POWDER…", 72, "Restoring saves and preparing the display.");
           Module.removeRunDependency("idbfs-load");
         });
       } catch (e) {
         console.warn("[powder] persistent-save setup failed:", e);
+        setLoading("Starting POWDER…", 72, "Persistent saves were unavailable, continuing with the game runtime.");
       }
     }],
 
@@ -176,8 +191,8 @@
       document.title = "powder-wasm";
       setTimeout(function () { document.title = "powder-wasm"; }, 0);
       setTimeout(function () { document.title = "powder-wasm"; }, 1000);
+      setLoading("Drawing the title screen…", 92, "If the screen stays blank after this finishes, reload the app; installed/offline loads use the cached copy.");
       updateControlsHint();
-      if (loadingEl) loadingEl.style.display = "none";
       // Ask the browser not to evict the app cache or IndexedDB saves under
       // storage pressure. Browsers may decline based on their own policy, so
       // offline play still relies on the service-worker cache either way.
@@ -187,13 +202,23 @@
       updateSaveState();
       updateOfflineState();
       updateStorageState();
-      maybeShowQuickstart();
-      focusGame();
+      setTimeout(function () {
+        if (crashed) return;
+        if (loadingProgress) {
+          loadingProgress.value = 100;
+          loadingProgress.setAttribute("value", "100");
+        }
+        if (loadingEl) loadingEl.style.display = "none";
+        maybeShowQuickstart();
+        focusGame();
+      }, 1600);
     },
 
     setStatus: function (text) {
-      if (loadingText && text) loadingText.textContent = text;
-      if (!ready) setStatus(text || "Loading…");
+      setLoading(text || "Loading…", undefined);
+    },
+    monitorRunDependencies: function (left) {
+      if (left > 0) setLoading("Loading POWDER…", 35, "Fetching the game engine and restoring browser storage.");
     },
   };
   window.Module = Module;
@@ -398,7 +423,10 @@
   var optReduceMotion = $("opt-reducemotion");
 
   function isTouch() {
-    return ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+    var hasTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+    var coarsePointer = !window.matchMedia ||
+      window.matchMedia("(hover: none), (pointer: coarse)").matches;
+    return hasTouch && coarsePointer;
   }
   function applySettings() {
     document.body.classList.toggle("contrast", !!settings.contrast);
