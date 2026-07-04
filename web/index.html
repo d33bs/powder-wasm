@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="powder-wasm">
-  <link rel="stylesheet" href="style.css?v=41">
+  <link rel="stylesheet" href="style.css?v=42">
 </head>
 <body>
   <div id="app">
@@ -146,10 +146,19 @@
     <form method="dialog" class="close-row"><button type="submit">Close</button></form>
   </dialog>
 
+  <dialog id="install-help">
+    <h2>Install powder-wasm</h2>
+    <p>In Chrome on Android, open the browser menu and choose
+       <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p>
+    <p class="hint">If the native install prompt is available, this button will
+       open it directly. If not, Chrome still allows installation from its menu.</p>
+    <form method="dialog" class="close-row"><button type="submit">Close</button></form>
+  </dialog>
+
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
        (Production caching is handled by the service worker / versioned cache.) -->
-  <script src="app.js?v=41"></script>
-  <script src="powder.js?v=41"></script>
+  <script src="app.js?v=42"></script>
+  <script src="powder.js?v=42"></script>
 </body>
 </html>

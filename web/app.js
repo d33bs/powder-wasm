@@ -29,6 +29,7 @@
   var storageStateEl = $("storage-state");
   var installTopBtn = $("install-top-btn");
   var installSettingsBtn = $("install-settings-btn");
+  var installHelpDlg = $("install-help");
 
   var ready = false;
   var startupRevealed = false;
@@ -53,7 +54,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "41"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "42"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -495,14 +496,21 @@
     return window.matchMedia("(display-mode: standalone)").matches ||
            window.navigator.standalone === true;
   }
+  function maybeShowInstallButtons() {
+    setInstallButtonsVisible(!isStandaloneApp());
+  }
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();
     installPromptEvent = e;
-    setInstallButtonsVisible(!isStandaloneApp());
+    maybeShowInstallButtons();
   });
   installBtns.forEach(function (installBtn) {
     installBtn.addEventListener("click", function () {
-      if (!installPromptEvent) return;
+      if (!installPromptEvent) {
+        if (installHelpDlg && installHelpDlg.showModal) installHelpDlg.showModal();
+        else alert("To install on Android Chrome, open the browser menu and choose Install app or Add to Home screen.");
+        return;
+      }
       installPromptEvent.prompt();
       installPromptEvent.userChoice.finally(function () {
         installPromptEvent = null;
@@ -515,6 +523,7 @@
     installPromptEvent = null;
     setInstallButtonsVisible(false);
   });
+  maybeShowInstallButtons();
   function updateOfflineState() {
     if (!offlineStateEl) return;
     if (!("caches" in window)) {
