@@ -119,10 +119,18 @@ hiscore_isnewgame()
 bool
 hiscore_advancedmode()
 {
+#ifdef __EMSCRIPTEN__
+    // The browser port should expose the full new-game setup flow from a fresh
+    // install. The original high-score gate made Initial God unavailable until
+    // the score table was populated, which is confusing for a web/PWA build
+    // where users expect their remembered startup choices immediately.
+    return true;
+#else
     if (glbScoreList[MAX_SCORES-1].turns == 0)
 	return false;
     else
 	return true;
+#endif
 }
 
 void
