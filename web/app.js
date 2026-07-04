@@ -27,7 +27,8 @@
   var saveStateEl = $("save-state");
   var offlineStateEl = $("offline-state");
   var storageStateEl = $("storage-state");
-  var installBtn = $("install-btn");
+  var installTopBtn = $("install-top-btn");
+  var installSettingsBtn = $("install-settings-btn");
 
   var ready = false;
   var startupRevealed = false;
@@ -52,7 +53,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "40"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "41"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -486,22 +487,34 @@
 
   // ----------------------------------------------------- Offline / install
   var installPromptEvent = null;
+  var installBtns = [installTopBtn, installSettingsBtn].filter(Boolean);
+  function setInstallButtonsVisible(visible) {
+    installBtns.forEach(function (btn) { btn.hidden = !visible; });
+  }
+  function isStandaloneApp() {
+    return window.matchMedia("(display-mode: standalone)").matches ||
+           window.navigator.standalone === true;
+  }
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();
     installPromptEvent = e;
-    if (installBtn) installBtn.hidden = false;
+    setInstallButtonsVisible(!isStandaloneApp());
   });
-  if (installBtn) {
+  installBtns.forEach(function (installBtn) {
     installBtn.addEventListener("click", function () {
       if (!installPromptEvent) return;
       installPromptEvent.prompt();
       installPromptEvent.userChoice.finally(function () {
         installPromptEvent = null;
-        installBtn.hidden = true;
+        setInstallButtonsVisible(false);
         focusGame();
       });
     });
-  }
+  });
+  window.addEventListener("appinstalled", function () {
+    installPromptEvent = null;
+    setInstallButtonsVisible(false);
+  });
   function updateOfflineState() {
     if (!offlineStateEl) return;
     if (!("caches" in window)) {

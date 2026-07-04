@@ -166,6 +166,20 @@ button:active { background: #2a2a2a; }
   color: var(--muted);
 }
 #fullscreen-btn:hover, #menu-btn:hover { color: var(--fg); }
+.topbar-actions .install-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--btn-border));
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 390px) {
+  .topbar-actions { gap: 6px; }
+  .topbar-actions .install-btn { padding: 0 10px; }
+}
 
 /* ---- Game viewport ---- */
 #screen {
