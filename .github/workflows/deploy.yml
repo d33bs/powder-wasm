@@ -26,9 +26,10 @@ jobs:
       - name: Set up Emscripten
         uses: mymindstorm/setup-emsdk@v14
         with:
-          # Matches the toolchain used to develop the port. Pin to a specific
-          # version (e.g. 3.1.74) if you need fully reproducible builds.
-          version: latest
+          # Keep CI aligned with the local toolchain used to verify the web
+          # build. Floating "latest" produced a deployed powder.js that used
+          # resizable ArrayBuffers and crashed on browser startup.
+          version: 6.0.1
           actions-cache-folder: emsdk-cache
 
       - name: Build POWDER to WebAssembly
