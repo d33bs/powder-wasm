@@ -52,15 +52,9 @@ powder_autosave()
 // browser KeyboardEvent is unreliable in SDL 1's Emscripten shim because its
 // Unicode value depends on separately tracked modifier state. Going through
 // POWDER's keyboard queue preserves the normal in-game menu and input flow.
-//
-// The leading Escape is intentional for touch controls: Actions and Inventory
-// are both mode-opening commands. If a user taps them back-to-back, the second
-// command should cancel the first menu/prompt before opening its own mode
-// instead of injecting a shortcut into the active menu.
 extern "C" EMSCRIPTEN_KEEPALIVE void
 powder_open_action_menu()
 {
-    hamfake_insertKeyPress('\x1b');
     hamfake_insertKeyPress('V');
 }
 
@@ -71,8 +65,13 @@ powder_open_action_menu()
 extern "C" EMSCRIPTEN_KEEPALIVE void
 powder_open_inventory()
 {
-    hamfake_insertKeyPress('\x1b');
     hamfake_insertKeyPress('i');
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE void
+powder_cancel_prompt()
+{
+    hamfake_insertKeyPress('\x1b');
 }
 #endif
 

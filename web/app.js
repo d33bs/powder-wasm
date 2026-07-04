@@ -54,7 +54,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "43"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "44"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -266,13 +266,40 @@
   });
 
   // ------------------------------------------------ Native action menu
+  var lastModeButton = null;
+  var lastModeButtonAt = 0;
+  var MODE_SWITCH_CANCEL_MS = 2000;
+
+  function openNativeMode(mode, ccallName) {
+    if (!ready || !Module.ccall) return;
+
+    // Actions and Inventory both open blocking in-game UI. A rapid switch from
+    // one to the other should cancel the current in-game prompt before opening
+    // the next mode, but this cancel must not be baked into every native
+    // command because startup menus such as initial god selection are also
+    // driven by the same keyboard queue.
+    var now = Date.now();
+    var shouldCancelFirst = lastModeButton &&
+      lastModeButton !== mode &&
+      now - lastModeButtonAt < MODE_SWITCH_CANCEL_MS;
+    lastModeButton = mode;
+    lastModeButtonAt = now;
+
+    if (shouldCancelFirst) {
+      Module.ccall("powder_cancel_prompt", null, [], []);
+      setTimeout(function () {
+        if (ready && Module.ccall) Module.ccall(ccallName, null, [], []);
+      }, 80);
+    } else {
+      Module.ccall(ccallName, null, [], []);
+    }
+  }
+
   var actionsBtn = $("actions-btn");
   if (actionsBtn) {
     actionsBtn.addEventListener("pointerdown", function (e) {
       e.preventDefault();
-      if (ready && Module.ccall) {
-        Module.ccall("powder_open_action_menu", null, [], []);
-      }
+      openNativeMode("actions", "powder_open_action_menu");
       setTransientStatus("Actions: choose a command. If it asks for a direction, use arrows or Back.", 6000);
       focusGame();
     });
@@ -282,9 +309,7 @@
   if (inventoryBtn) {
     inventoryBtn.addEventListener("pointerdown", function (e) {
       e.preventDefault();
-      if (ready && Module.ccall) {
-        Module.ccall("powder_open_inventory", null, [], []);
-      }
+      openNativeMode("inventory", "powder_open_inventory");
       setTransientStatus("Inventory: choose an item, or use Back to cancel.", 4500);
       focusGame();
     });
