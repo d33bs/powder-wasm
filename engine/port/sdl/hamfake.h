@@ -32,7 +32,6 @@
 // functions if USING_SDL is not defined.
 //
 void hamfake_rebuildScreen();
-void hamfake_forceScreenRefresh();
 void hamfake_awaitEvent();
 
 u16 *hamfake_lockScreen();

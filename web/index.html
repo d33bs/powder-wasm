@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="powder-wasm">
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
 </head>
 <body>
   <div id="app">
@@ -32,8 +32,6 @@
       <div id="loading">
         <div class="spinner"></div>
         <div id="loading-text">Loading POWDER…</div>
-        <progress id="loading-progress" max="100" value="0"></progress>
-        <div id="loading-help">Preparing the offline game runtime…</div>
       </div>
     </div>
 
@@ -67,16 +65,6 @@
            prompts. Death is permanent; Load only resumes active runs.</p>
       </div>
       <button id="quickstart-dismiss" type="button">Got it</button>
-    </section>
-
-    <section id="crash-recovery" role="alertdialog" aria-labelledby="crash-title" aria-describedby="crash-copy" hidden>
-      <h2 id="crash-title">POWDER needs to restart</h2>
-      <p id="crash-copy">The game runtime stopped unexpectedly. Your latest browser save has been kept where possible.</p>
-      <p id="crash-reason" class="hint"></p>
-      <div class="btn-row">
-        <button id="restart-app" type="button">Restart app</button>
-      </div>
-      <p class="hint">This reloads the app page, not the whole browser. After the first complete load, it can restart from the offline cache.</p>
     </section>
   </div>
 
@@ -160,7 +148,7 @@
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
        (Production caching is handled by the service worker / versioned cache.) -->
-  <script src="app.js?v=37"></script>
-  <script src="powder.js?v=37"></script>
+  <script src="app.js?v=38"></script>
+  <script src="powder.js?v=38"></script>
 </body>
 </html>

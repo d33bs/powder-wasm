@@ -43,17 +43,6 @@ using namespace std;
 // input / frame-sync wait below yield to the single-threaded browser event
 // loop so keyboard, mouse and timer events can be delivered.
 #include <emscripten.h>
-
-static void
-hamfake_notifyBrowserFrameReady()
-{
-    EM_ASM({
-        if (typeof window !== 'undefined' &&
-            typeof window.__powderFirstFrame === 'function') {
-            window.__powderFirstFrame();
-        }
-    });
-}
 #endif
 
 #ifndef USE_VIRTUAL_SCREEN
@@ -865,9 +854,6 @@ hamfake_rebuildScreen()
 	SDL_UnlockSurface(glbVideoSurface);
 	// Rebuild from 15bit screen.
 	SDL_UpdateRect(glbVideoSurface, 0, 0, 0, 0);
-#ifdef __EMSCRIPTEN__
-	hamfake_notifyBrowserFrameReady();
-#endif
 #else
 	dst = new u8[glbScreenWidth * glbScreenHeight * 3];
 	scaleScreenFrom15bit(dst, glbScreenWidth*3);
@@ -1033,9 +1019,6 @@ hamfake_rebuildScreen()
 	SDL_UnlockSurface(glbVideoSurface);
 	// Rebuild from 8bit screen.
 	SDL_UpdateRect(glbVideoSurface, 0, 0, 0, 0);
-#ifdef __EMSCRIPTEN__
-	hamfake_notifyBrowserFrameReady();
-#endif
 #else
 	dst = new u8[glbScreenWidth * glbScreenHeight * 3];
 	scaleScreenFromPaletted(dst, glbScreenWidth*3);
@@ -1044,13 +1027,6 @@ hamfake_rebuildScreen()
 	glbOurScreenId++;
 #endif
     }
-}
-
-void
-hamfake_forceScreenRefresh()
-{
-    glb_isdirty = true;
-    hamfake_rebuildScreen();
 }
 
 // Converts a unicode key into an ASCII key.

@@ -18,8 +18,6 @@
   var statusEl = $("status");
   var loadingEl = $("loading");
   var loadingText = $("loading-text");
-  var loadingProgress = $("loading-progress");
-  var loadingHelp = $("loading-help");
   var touchControls = $("touch-controls");
   var dpad = $("dpad");
   var screenEl = $("screen");
@@ -30,14 +28,8 @@
   var offlineStateEl = $("offline-state");
   var storageStateEl = $("storage-state");
   var installBtn = $("install-btn");
-  var crashRecovery = $("crash-recovery");
-  var crashReason = $("crash-reason");
-  var restartAppBtn = $("restart-app");
 
   var ready = false;
-  var crashed = false;
-  var firstFrameSeen = false;
-  var startupFrameTimer = null;
   var statusTimer = null;
   var CONTROLS_HINT =
     "Move: Arrows / WASD  ·  Actions: V  ·  Back: Esc  ·  Inventory: i";
@@ -59,134 +51,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "37"; // keep in sync with ?v= on script tags in index.html
-
-  function setLoading(text, value, help) {
-    if (loadingText && text) loadingText.textContent = text;
-    if (loadingProgress && typeof value === "number") {
-      loadingProgress.value = value;
-      loadingProgress.setAttribute("value", String(value));
-    }
-    if (loadingHelp && help) loadingHelp.textContent = help;
-    if (!ready && text) setStatus(text);
-  }
-
-  function revealGame() {
-    if (crashed) return;
-    if (loadingProgress) {
-      loadingProgress.value = 100;
-      loadingProgress.setAttribute("value", "100");
-    }
-    if (loadingEl) loadingEl.style.display = "none";
-    maybeShowQuickstart();
-    focusGame();
-    scheduleVisibleRefresh();
-  }
-
-  function refreshVisibleScreen() {
-    if (crashed || !ready || !Module.ccall) return;
-    try {
-      Module.ccall("powder_refresh_screen", null, [], []);
-    } catch (e) {
-      console.warn("[powder] visible screen refresh failed:", e);
-    }
-  }
-
-  function scheduleVisibleRefresh() {
-    requestAnimationFrame(function () {
-      setTimeout(refreshVisibleScreen, 50);
-      setTimeout(refreshVisibleScreen, 350);
-    });
-  }
-
-  function handleFirstFrame() {
-    if (crashed) return;
-    if (firstFrameSeen) return;
-    firstFrameSeen = true;
-    if (startupFrameTimer !== null) {
-      clearTimeout(startupFrameTimer);
-      startupFrameTimer = null;
-    }
-    if (!ready) return;
-    requestAnimationFrame(function () { setTimeout(revealGame, 250); });
-  }
-
-  window.__powderFirstFrame = handleFirstFrame;
-
-  function waitForFirstFrame() {
-    if (crashed) return;
-    if (firstFrameSeen) {
-      revealGame();
-      return;
-    }
-
-    setLoading("Drawing the title screen…", 96, "POWDER has started; preparing the display.");
-    startupFrameTimer = setTimeout(function () {
-      if (!firstFrameSeen && !crashed) {
-        showCrashRecovery("The game runtime started, but POWDER has not drawn a frame yet.");
-      }
-    }, 15000);
-  }
-
-  function describeError(error) {
-    if (!error) return "";
-    if (typeof error === "string") return error;
-    if (error.message) return error.message;
-    try { return String(error); } catch (e) { return ""; }
-  }
-
-  function showCrashRecovery(error) {
-    if (crashed) return;
-    crashed = true;
-    ready = false;
-    document.body.classList.add("runtime-crashed");
-    try { stopActiveHold(); } catch (e) {}
-    try { syncToIDB(); } catch (e) {}
-    if (loadingEl) loadingEl.style.display = "none";
-    if (quickstart) quickstart.hidden = true;
-    setStatus("The game runtime stopped. Restart the app to continue.");
-    if (crashReason) {
-      var reason = describeError(error);
-      crashReason.textContent = reason ? "Details: " + reason : "";
-    }
-    if (crashRecovery) crashRecovery.hidden = false;
-    if (restartAppBtn) restartAppBtn.focus();
-  }
-
-  function shouldShowGlobalRecovery(error) {
-    if (crashed || !ready) return false;
-
-    var message = describeError(error).toLowerCase();
-    if (!message) return false;
-
-    // Installed/PWA browser surfaces can emit unrelated recoverable errors
-    // during startup, install-prompt handling, or layout.  Those should not
-    // block the game behind a restart prompt.
-    if (message.indexOf("resizeobserver") !== -1) return false;
-    if (message.indexOf("aborterror") !== -1) return false;
-    if (message.indexOf("notallowederror") !== -1) return false;
-    if (message.indexOf("userchoice") !== -1) return false;
-
-    return message.indexOf("runtimeerror") !== -1 ||
-           message.indexOf("wasm") !== -1 ||
-           message.indexOf("webassembly") !== -1 ||
-           message.indexOf("memory access") !== -1 ||
-           message.indexOf("out of bounds") !== -1 ||
-           message.indexOf("unreachable") !== -1 ||
-           message.indexOf("asyncify") !== -1 ||
-           message.indexOf("abort(") !== -1;
-  }
-
-  function callPowder(name) {
-    if (crashed || !ready || !Module.ccall) return false;
-    try {
-      Module.ccall(name, null, [], []);
-      return true;
-    } catch (e) {
-      showCrashRecovery(e);
-      return false;
-    }
-  }
+  var ASSET_VERSION = "38"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -223,41 +88,21 @@
     locateFile: function (path, prefix) { return prefix + path + "?v=" + ASSET_VERSION; },
     print: function () { console.log.apply(console, arguments); },
     printErr: function () { console.warn.apply(console, arguments); },
-    onAbort: function (reason) { showCrashRecovery(reason || "Runtime aborted."); },
 
     // Mount persistent storage and restore saves BEFORE main() runs (POWDER
     // reads its save at startup; addRunDependency blocks main on the restore).
     preRun: [function () {
-      var added = false, settled = false;
-      function releaseIdbfs(note) {
-        if (settled) return;
-        settled = true;
-        if (note) console.warn(note);
-        setLoading("Starting POWDER…", 72, "Restoring saves and preparing the display.");
-        if (added) { try { Module.removeRunDependency("idbfs-load"); } catch (e) {} }
-      }
       try {
-        setLoading("Opening saved game storage…", 18, "This works offline after the app has been cached.");
         FS.mkdir(SAVE_DIR);
         FS.mount(IDBFS, {}, SAVE_DIR);
         FS.chdir(SAVE_DIR);
         Module.addRunDependency("idbfs-load");
-        added = true;
-        // Safety net: a hung IndexedDB open (seen on some deployed origins) must
-        // never block startup forever. If the restore hasn't called back in
-        // time, start the game anyway -- saves still persist going forward, and
-        // this is the difference between a playable game and an endless loading
-        // bar with no crash-recovery escape (that timer only starts post-init).
-        var guard = setTimeout(function () {
-          releaseIdbfs("[powder] IDBFS restore timed out; starting without a restored save");
-        }, 8000);
         FS.syncfs(true, function (err) {
-          clearTimeout(guard);
-          releaseIdbfs(err ? "[powder] IDBFS load failed: " + err : null);
+          if (err) console.warn("[powder] IDBFS load failed:", err);
+          Module.removeRunDependency("idbfs-load");
         });
       } catch (e) {
         console.warn("[powder] persistent-save setup failed:", e);
-        releaseIdbfs(null);
       }
     }],
 
@@ -266,8 +111,8 @@
       document.title = "powder-wasm";
       setTimeout(function () { document.title = "powder-wasm"; }, 0);
       setTimeout(function () { document.title = "powder-wasm"; }, 1000);
-      setLoading("Drawing the title screen…", 92, "If the screen stays blank after this finishes, reload the app; installed/offline loads use the cached copy.");
       updateControlsHint();
+      if (loadingEl) loadingEl.style.display = "none";
       // Ask the browser not to evict the app cache or IndexedDB saves under
       // storage pressure. Browsers may decline based on their own policy, so
       // offline play still relies on the service-worker cache either way.
@@ -277,30 +122,16 @@
       updateSaveState();
       updateOfflineState();
       updateStorageState();
-      waitForFirstFrame();
+      maybeShowQuickstart();
+      focusGame();
     },
 
     setStatus: function (text) {
-      setLoading(text || "Loading…", undefined);
-    },
-    monitorRunDependencies: function (left) {
-      if (left > 0) setLoading("Loading POWDER…", 35, "Fetching the game engine and restoring browser storage.");
+      if (loadingText && text) loadingText.textContent = text;
+      if (!ready) setStatus(text || "Loading…");
     },
   };
   window.Module = Module;
-
-  // Loading watchdog: if the runtime never initializes (a stalled/failed engine
-  // download, a blocked storage API, etc.) don't strand the player on an endless
-  // loading bar -- offer the recovery/reload escape. The generous timeout avoids
-  // cutting off a slow first download of the ~3 MB engine; once cached it is
-  // instant and works offline.
-  setTimeout(function () {
-    if (!ready && !crashed) {
-      showCrashRecovery(
-        "Loading didn't finish. This is usually a slow or interrupted download of the game engine — reload to try again."
-      );
-    }
-  }, 45000);
 
   function focusGame() { try { canvas.focus(); } catch (e) {} }
 
@@ -314,7 +145,9 @@
     }
   }
   function autosave() {
-    if (ready && Module.ccall) callPowder("powder_autosave");
+    if (ready && Module.ccall) {
+      try { Module.ccall("powder_autosave", null, [], []); } catch (e) {}
+    }
     syncToIDB();
     updateSaveState();
   }
@@ -364,7 +197,6 @@
   var HOLD_DELAY_MS = 350;
   var HOLD_REPEAT_MS = 120;
   var activeHoldStop = null;
-  var actionMenuLikelyOpen = false;
 
   function stopActiveHold() {
     if (activeHoldStop) activeHoldStop();
@@ -378,11 +210,7 @@
       stopActiveHold();
       sendKey(key);
       if (key === "Escape") {
-        actionMenuLikelyOpen = false;
         setTransientStatus("Back cancels prompts and closes in-game menus.", 3000);
-      }
-      if (key === "Enter" || key.indexOf("Arrow") === 0 || key === "5") {
-        actionMenuLikelyOpen = false;
       }
 
       // POWDER movement is turn-based, so repeat complete key presses rather
@@ -421,9 +249,9 @@
   if (actionsBtn) {
     actionsBtn.addEventListener("pointerdown", function (e) {
       e.preventDefault();
-      stopActiveHold();
-      callPowder("powder_open_action_menu");
-      actionMenuLikelyOpen = true;
+      if (ready && Module.ccall) {
+        Module.ccall("powder_open_action_menu", null, [], []);
+      }
       setTransientStatus("Actions: choose a command. If it asks for a direction, use arrows or Back.", 6000);
       focusGame();
     });
@@ -433,23 +261,12 @@
   if (inventoryBtn) {
     inventoryBtn.addEventListener("pointerdown", function (e) {
       e.preventDefault();
-      stopActiveHold();
-
-      // In POWDER's command list, the keyboard `i` key means "info/bind this
-      // action", not inventory.  If the user taps Actions then Inv, cancel the
-      // action list instead of accidentally entering the binding flow.
-      if (actionMenuLikelyOpen) {
-        setTimeout(function () { sendKey("Escape"); }, 120);
-        actionMenuLikelyOpen = false;
-        setTransientStatus("Closing Actions. Tap Inv again to open inventory.", 3500);
-      } else if (callPowder("powder_open_inventory")) {
-        // Native queue path succeeded.
-      } else if (!crashed) {
-        sendKey("i");
+      if (ready && Module.ccall) {
+        Module.ccall("powder_open_inventory", null, [], []);
       }
+      setTransientStatus("Inventory: choose an item, or use Back to cancel.", 4500);
       focusGame();
     });
-    inventoryBtn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   }
 
   // --------------------------------------------------- Tap / swipe to move
@@ -502,10 +319,7 @@
   var optReduceMotion = $("opt-reducemotion");
 
   function isTouch() {
-    var hasTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
-    var coarsePointer = !window.matchMedia ||
-      window.matchMedia("(hover: none), (pointer: coarse)").matches;
-    return hasTouch && coarsePointer;
+    return ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
   }
   function applySettings() {
     document.body.classList.toggle("contrast", !!settings.contrast);
@@ -634,27 +448,6 @@
     if (importInput.files && importInput.files[0]) importSave(importInput.files[0]);
   });
   if ($("save-reset")) $("save-reset").addEventListener("click", resetStorage);
-
-  if (restartAppBtn) {
-    restartAppBtn.addEventListener("click", function () {
-      restartAppBtn.disabled = true;
-      restartAppBtn.textContent = "Restarting…";
-      setStatus("Restarting from local app cache if available…");
-      try { syncToIDB(); } catch (e) {}
-      window.location.reload();
-    });
-  }
-
-  window.addEventListener("error", function (e) {
-    var error = e.error || e.message || "Unexpected runtime error.";
-    if (shouldShowGlobalRecovery(error)) showCrashRecovery(error);
-    else console.warn("[powder] non-fatal browser error:", error);
-  });
-  window.addEventListener("unhandledrejection", function (e) {
-    var error = e.reason || "Unexpected async runtime error.";
-    if (shouldShowGlobalRecovery(error)) showCrashRecovery(error);
-    else console.warn("[powder] non-fatal async browser error:", error);
-  });
 
   // ----------------------------------------------------- Quick start
   function maybeShowQuickstart() {

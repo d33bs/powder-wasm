@@ -59,21 +59,13 @@ powder_open_action_menu()
 }
 
 // Queue POWDER's native inventory shortcut through the same path as the
-// Actions button.  This keeps mobile shell buttons from mixing browser
-// KeyboardEvent synthesis with direct engine queue insertion.
+// Actions button. This avoids mixing browser KeyboardEvent synthesis with
+// direct engine queue insertion when mobile users press Actions and Inventory
+// back-to-back.
 extern "C" EMSCRIPTEN_KEEPALIVE void
 powder_open_inventory()
 {
     hamfake_insertKeyPress('i');
-}
-
-// Ask the SDL port to repaint the current screen. The web shell calls this
-// after removing the loading overlay so browsers/PWA shells that defer or drop
-// occluded canvas presentation get a fresh visible SDL_UpdateRect.
-extern "C" EMSCRIPTEN_KEEPALIVE void
-powder_refresh_screen()
-{
-    hamfake_forceScreenRefresh();
 }
 #endif
 
