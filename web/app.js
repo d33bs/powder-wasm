@@ -15,6 +15,14 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var canvas = $("canvas");
+  // Create the canvas's 2D context up front and CPU-readable, BEFORE the engine
+  // loads. Emscripten's SDL1 reuses this same context, so the game is
+  // unaffected -- but it guarantees the "first frame painted" detector
+  // (canvasLooksPainted) can sample pixels via getImageData on every browser.
+  // Without this, some GPU/canvas backends return an unreadable context created
+  // by SDL, so the detector never sees a frame and falsely shows the crash /
+  // "restart the app" screen ~12s after a perfectly good first frame.
+  try { if (canvas) canvas.getContext("2d", { willReadFrequently: true }); } catch (e) {}
   var statusEl = $("status");
   var loadingEl = $("loading");
   var loadingText = $("loading-text");
@@ -57,7 +65,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "33"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "34"; // keep in sync with ?v= on script tags in index.html
 
   function setLoading(text, value, help) {
     if (loadingText && text) loadingText.textContent = text;
@@ -222,20 +230,36 @@
     // Mount persistent storage and restore saves BEFORE main() runs (POWDER
     // reads its save at startup; addRunDependency blocks main on the restore).
     preRun: [function () {
+      var added = false, settled = false;
+      function releaseIdbfs(note) {
+        if (settled) return;
+        settled = true;
+        if (note) console.warn(note);
+        setLoading("Starting POWDER…", 72, "Restoring saves and preparing the display.");
+        if (added) { try { Module.removeRunDependency("idbfs-load"); } catch (e) {} }
+      }
       try {
         setLoading("Opening saved game storage…", 18, "This works offline after the app has been cached.");
         FS.mkdir(SAVE_DIR);
         FS.mount(IDBFS, {}, SAVE_DIR);
         FS.chdir(SAVE_DIR);
         Module.addRunDependency("idbfs-load");
+        added = true;
+        // Safety net: a hung IndexedDB open (seen on some deployed origins) must
+        // never block startup forever. If the restore hasn't called back in
+        // time, start the game anyway -- saves still persist going forward, and
+        // this is the difference between a playable game and an endless loading
+        // bar with no crash-recovery escape (that timer only starts post-init).
+        var guard = setTimeout(function () {
+          releaseIdbfs("[powder] IDBFS restore timed out; starting without a restored save");
+        }, 8000);
         FS.syncfs(true, function (err) {
-          if (err) console.warn("[powder] IDBFS load failed:", err);
-          setLoading("Starting POWDER…", 72, "Restoring saves and preparing the display.");
-          Module.removeRunDependency("idbfs-load");
+          clearTimeout(guard);
+          releaseIdbfs(err ? "[powder] IDBFS load failed: " + err : null);
         });
       } catch (e) {
         console.warn("[powder] persistent-save setup failed:", e);
-        setLoading("Starting POWDER…", 72, "Persistent saves were unavailable, continuing with the game runtime.");
+        releaseIdbfs(null);
       }
     }],
 
@@ -266,6 +290,19 @@
     },
   };
   window.Module = Module;
+
+  // Loading watchdog: if the runtime never initializes (a stalled/failed engine
+  // download, a blocked storage API, etc.) don't strand the player on an endless
+  // loading bar -- offer the recovery/reload escape. The generous timeout avoids
+  // cutting off a slow first download of the ~3 MB engine; once cached it is
+  // instant and works offline.
+  setTimeout(function () {
+    if (!ready && !crashed) {
+      showCrashRecovery(
+        "Loading didn't finish. This is usually a slow or interrupted download of the game engine — reload to try again."
+      );
+    }
+  }, 45000);
 
   function focusGame() { try { canvas.focus(); } catch (e) {} }
 
