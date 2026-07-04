@@ -13,14 +13,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="powder-wasm">
-  <link rel="stylesheet" href="style.css?v=46">
+  <link rel="stylesheet" href="style.css?v=47">
 </head>
 <body>
   <div id="app">
     <header id="topbar">
       <span id="title">powder-wasm</span>
       <div class="topbar-actions">
-        <button id="install-top-btn" class="install-btn" type="button" hidden>Install</button>
         <button id="fullscreen-btn" type="button" aria-label="Toggle fullscreen" title="Fullscreen">⛶</button>
         <button id="menu-btn" type="button" aria-label="Web settings" title="Settings">⚙</button>
       </div>
@@ -132,6 +131,8 @@
          browser / WebAssembly port of POWDER 1.18, © 2003–2009 Jeff Lait, used
          under the Creative Commons Sampling Plus 1.0 license. No gameplay has
          been altered.</p>
+      <p class="hint">For web-port bugs, change requests, and release history,
+         use the <a href="https://github.com/d33bs/powder-wasm" target="_blank" rel="noopener">d33bs/powder-wasm GitHub repo</a>.</p>
       <table class="controls">
         <tr><td>Move</td><td>Arrows / WASD / numpad</td></tr>
         <tr><td>Confirm</td><td>Enter</td></tr>
@@ -158,7 +159,7 @@
   <!-- app.js MUST load before powder.js: it defines the Emscripten Module.
        The ?v query is a cache-buster; bump it when rebuilding during local dev.
        (Production caching is handled by the service worker / versioned cache.) -->
-  <script src="app.js?v=46"></script>
-  <script src="powder.js?v=46"></script>
+  <script src="app.js?v=47"></script>
+  <script src="powder.js?v=47"></script>
 </body>
 </html>

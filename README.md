@@ -11,6 +11,10 @@ in the browser with **no backend**, and deploys automatically to GitHub Pages.
 
 **Play:** https://d33bs.github.io/powder-wasm/ (after the first deploy)
 
+**Bugs and changes:** use the
+[`d33bs/powder-wasm` GitHub repo](https://github.com/d33bs/powder-wasm) for web
+port bug reports, change requests, and release history.
+
 ---
 
 ## How it works
