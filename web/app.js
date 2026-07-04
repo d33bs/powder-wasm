@@ -59,7 +59,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "36"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "37"; // keep in sync with ?v= on script tags in index.html
 
   function setLoading(text, value, help) {
     if (loadingText && text) loadingText.textContent = text;
@@ -80,6 +80,23 @@
     if (loadingEl) loadingEl.style.display = "none";
     maybeShowQuickstart();
     focusGame();
+    scheduleVisibleRefresh();
+  }
+
+  function refreshVisibleScreen() {
+    if (crashed || !ready || !Module.ccall) return;
+    try {
+      Module.ccall("powder_refresh_screen", null, [], []);
+    } catch (e) {
+      console.warn("[powder] visible screen refresh failed:", e);
+    }
+  }
+
+  function scheduleVisibleRefresh() {
+    requestAnimationFrame(function () {
+      setTimeout(refreshVisibleScreen, 50);
+      setTimeout(refreshVisibleScreen, 350);
+    });
   }
 
   function handleFirstFrame() {
@@ -91,7 +108,7 @@
       startupFrameTimer = null;
     }
     if (!ready) return;
-    requestAnimationFrame(function () { setTimeout(revealGame, 80); });
+    requestAnimationFrame(function () { setTimeout(revealGame, 250); });
   }
 
   window.__powderFirstFrame = handleFirstFrame;

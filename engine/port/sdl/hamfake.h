@@ -32,6 +32,7 @@
 // functions if USING_SDL is not defined.
 //
 void hamfake_rebuildScreen();
+void hamfake_forceScreenRefresh();
 void hamfake_awaitEvent();
 
 u16 *hamfake_lockScreen();
@@ -282,4 +283,3 @@ void ham_ReloadTileGfx(tile_info_ptr tiledata, const u16 *data, int destidx,
 		  int numtile);
 
 #endif
-

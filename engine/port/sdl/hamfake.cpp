@@ -1046,6 +1046,13 @@ hamfake_rebuildScreen()
     }
 }
 
+void
+hamfake_forceScreenRefresh()
+{
+    glb_isdirty = true;
+    hamfake_rebuildScreen();
+}
+
 // Converts a unicode key into an ASCII key.
 int
 processSDLKey(int unicode, int sdlkey)
