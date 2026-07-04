@@ -233,7 +233,8 @@ button:active { background: #2a2a2a; }
   background: var(--panel);
   user-select: none;
   -webkit-user-select: none;
-  touch-action: manipulation;
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 #touch-controls[hidden] { display: none; }
 
@@ -260,6 +261,8 @@ button:active { background: #2a2a2a; }
   padding: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--btn);
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 .dbtn.center {
   justify-self: center;
@@ -281,7 +284,12 @@ button:active { background: #2a2a2a; }
   width: min(38vw, 180px);
   flex: 0 0 auto;
 }
-.abtn { font-size: 0.95rem; padding: 8px 4px; }
+.abtn {
+  font-size: 0.95rem;
+  padding: 8px 4px;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
 .abtn:last-child {
   grid-column: 1 / -1;
   border-color: color-mix(in srgb, var(--accent) 55%, var(--btn-border));

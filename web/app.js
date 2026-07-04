@@ -54,7 +54,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "45"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "46"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -218,6 +218,7 @@
   var HOLD_DELAY_MS = 350;
   var HOLD_REPEAT_MS = 120;
   var activeHoldStop = null;
+  var activeHoldPointerId = null;
 
   function stopActiveHold() {
     if (activeHoldStop) activeHoldStop();
@@ -239,27 +240,48 @@
       if (key.indexOf("Arrow") === 0 || key === "5") {
         var delayTimer = null;
         var repeatTimer = null;
+        var stopped = false;
         var stopHold = function () {
+          stopped = true;
           if (delayTimer !== null) clearTimeout(delayTimer);
-          if (repeatTimer !== null) clearInterval(repeatTimer);
+          if (repeatTimer !== null) clearTimeout(repeatTimer);
           delayTimer = repeatTimer = null;
+          activeHoldPointerId = null;
           if (activeHoldStop === stopHold) activeHoldStop = null;
+        };
+        var repeat = function () {
+          if (stopped) return;
+          sendKey(key);
+          repeatTimer = setTimeout(repeat, HOLD_REPEAT_MS);
         };
 
         activeHoldStop = stopHold;
+        activeHoldPointerId = e.pointerId;
         try { btn.setPointerCapture(e.pointerId); } catch (err) {}
         delayTimer = setTimeout(function () {
-          sendKey(key);
-          repeatTimer = setInterval(function () { sendKey(key); }, HOLD_REPEAT_MS);
+          repeat();
         }, HOLD_DELAY_MS);
       }
     });
-    btn.addEventListener("pointerup", stopActiveHold);
-    btn.addEventListener("pointercancel", stopActiveHold);
-    btn.addEventListener("lostpointercapture", stopActiveHold);
+    btn.addEventListener("pointerup", function (e) {
+      if (activeHoldPointerId === null || activeHoldPointerId === e.pointerId) {
+        stopActiveHold();
+      }
+    });
+    btn.addEventListener("pointercancel", function (e) {
+      if (activeHoldPointerId === null || activeHoldPointerId === e.pointerId) {
+        stopActiveHold();
+      }
+    });
     btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   }
   Array.prototype.forEach.call(document.querySelectorAll(".dbtn, .abtn"), bindButton);
+  document.addEventListener("pointerup", function (e) {
+    if (activeHoldPointerId === e.pointerId) stopActiveHold();
+  });
+  document.addEventListener("pointercancel", function (e) {
+    if (activeHoldPointerId === e.pointerId) stopActiveHold();
+  });
   window.addEventListener("blur", stopActiveHold);
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") stopActiveHold();
