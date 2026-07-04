@@ -15,14 +15,6 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var canvas = $("canvas");
-  // Create the canvas's 2D context up front and CPU-readable, BEFORE the engine
-  // loads. Emscripten's SDL1 reuses this same context, so the game is
-  // unaffected -- but it guarantees the "first frame painted" detector
-  // (canvasLooksPainted) can sample pixels via getImageData on every browser.
-  // Without this, some GPU/canvas backends return an unreadable context created
-  // by SDL, so the detector never sees a frame and falsely shows the crash /
-  // "restart the app" screen ~12s after a perfectly good first frame.
-  try { if (canvas) canvas.getContext("2d", { willReadFrequently: true }); } catch (e) {}
   var statusEl = $("status");
   var loadingEl = $("loading");
   var loadingText = $("loading-text");
@@ -65,7 +57,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "34"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "35"; // keep in sync with ?v= on script tags in index.html
 
   function setLoading(text, value, help) {
     if (loadingText && text) loadingText.textContent = text;
@@ -77,57 +69,25 @@
     if (!ready && text) setStatus(text);
   }
 
-  function canvasLooksPainted() {
-    if (!canvas || !canvas.width || !canvas.height) return false;
-
-    try {
-      var ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return true;
-
-      var stepX = Math.max(1, Math.floor(canvas.width / 32));
-      var stepY = Math.max(1, Math.floor(canvas.height / 24));
-      var lit = 0;
-      var samples = 0;
-
-      for (var y = Math.floor(stepY / 2); y < canvas.height; y += stepY) {
-        for (var x = Math.floor(stepX / 2); x < canvas.width; x += stepX) {
-          var d = ctx.getImageData(x, y, 1, 1).data;
-          samples++;
-          if (d[3] > 0 && d[0] + d[1] + d[2] > 30) lit++;
-          if (lit >= 4) return true;
-        }
-      }
-
-      return samples > 0 && lit >= 4;
-    } catch (e) {
-      // Some browser/canvas backends disallow pixel reads after SDL takes over.
-      // In that case do not block startup behind a detector we cannot run.
-      console.warn("[powder] unable to inspect first frame:", e);
-      return true;
+  function revealGame() {
+    if (loadingProgress) {
+      loadingProgress.value = 100;
+      loadingProgress.setAttribute("value", "100");
     }
+    if (loadingEl) loadingEl.style.display = "none";
+    maybeShowQuickstart();
+    focusGame();
   }
 
-  function finishStartupWhenPainted(startedAt) {
+  function finishStartupAfterGracePeriod() {
     if (crashed) return;
-
-    if (canvasLooksPainted()) {
-      if (loadingProgress) {
-        loadingProgress.value = 100;
-        loadingProgress.setAttribute("value", "100");
-      }
-      if (loadingEl) loadingEl.style.display = "none";
-      maybeShowQuickstart();
-      focusGame();
-      return;
-    }
-
-    if (Date.now() - startedAt > 12000) {
-      showCrashRecovery("The game runtime started, but the display never drew a visible frame.");
-      return;
-    }
-
-    setLoading("Waiting for the first game frame…", 96, "POWDER has started; waiting for the canvas to draw before showing the game.");
-    setTimeout(function () { finishStartupWhenPainted(startedAt); }, 250);
+    // Do not inspect canvas pixels here. Browser canvas backends are not a
+    // reliable readiness signal for SDL/Emscripten. Once Emscripten reports the
+    // runtime is initialized, give SDL a small deterministic paint window and
+    // then hand control to the game. Genuine engine failures still surface via
+    // onAbort and the global runtime-error recovery path.
+    setLoading("Drawing the title screen…", 96, "POWDER has started; preparing the display.");
+    setTimeout(revealGame, 1200);
   }
 
   function describeError(error) {
@@ -279,7 +239,7 @@
       updateSaveState();
       updateOfflineState();
       updateStorageState();
-      setTimeout(function () { finishStartupWhenPainted(Date.now()); }, 250);
+      finishStartupAfterGracePeriod();
     },
 
     setStatus: function (text) {
