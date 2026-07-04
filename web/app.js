@@ -36,6 +36,8 @@
 
   var ready = false;
   var crashed = false;
+  var firstFrameSeen = false;
+  var startupFrameTimer = null;
   var statusTimer = null;
   var CONTROLS_HINT =
     "Move: Arrows / WASD  ·  Actions: V  ·  Back: Esc  ·  Inventory: i";
@@ -57,7 +59,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "35"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "36"; // keep in sync with ?v= on script tags in index.html
 
   function setLoading(text, value, help) {
     if (loadingText && text) loadingText.textContent = text;
@@ -70,6 +72,7 @@
   }
 
   function revealGame() {
+    if (crashed) return;
     if (loadingProgress) {
       loadingProgress.value = 100;
       loadingProgress.setAttribute("value", "100");
@@ -79,15 +82,33 @@
     focusGame();
   }
 
-  function finishStartupAfterGracePeriod() {
+  function handleFirstFrame() {
     if (crashed) return;
-    // Do not inspect canvas pixels here. Browser canvas backends are not a
-    // reliable readiness signal for SDL/Emscripten. Once Emscripten reports the
-    // runtime is initialized, give SDL a small deterministic paint window and
-    // then hand control to the game. Genuine engine failures still surface via
-    // onAbort and the global runtime-error recovery path.
+    if (firstFrameSeen) return;
+    firstFrameSeen = true;
+    if (startupFrameTimer !== null) {
+      clearTimeout(startupFrameTimer);
+      startupFrameTimer = null;
+    }
+    if (!ready) return;
+    requestAnimationFrame(function () { setTimeout(revealGame, 80); });
+  }
+
+  window.__powderFirstFrame = handleFirstFrame;
+
+  function waitForFirstFrame() {
+    if (crashed) return;
+    if (firstFrameSeen) {
+      revealGame();
+      return;
+    }
+
     setLoading("Drawing the title screen…", 96, "POWDER has started; preparing the display.");
-    setTimeout(revealGame, 1200);
+    startupFrameTimer = setTimeout(function () {
+      if (!firstFrameSeen && !crashed) {
+        showCrashRecovery("The game runtime started, but POWDER has not drawn a frame yet.");
+      }
+    }, 15000);
   }
 
   function describeError(error) {
@@ -239,7 +260,7 @@
       updateSaveState();
       updateOfflineState();
       updateStorageState();
-      finishStartupAfterGracePeriod();
+      waitForFirstFrame();
     },
 
     setStatus: function (text) {
