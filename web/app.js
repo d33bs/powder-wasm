@@ -54,7 +54,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "42"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "43"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
