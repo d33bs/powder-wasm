@@ -30,6 +30,7 @@
   var installBtn = $("install-btn");
 
   var ready = false;
+  var startupRevealed = false;
   var statusTimer = null;
   var CONTROLS_HINT =
     "Move: Arrows / WASD  ·  Actions: V  ·  Back: Esc  ·  Inventory: i";
@@ -51,7 +52,7 @@
   }
 
   var SAVE_DIR = "/powder";
-  var ASSET_VERSION = "38"; // keep in sync with ?v= on script tags in index.html
+  var ASSET_VERSION = "39"; // keep in sync with ?v= on script tags in index.html
 
   // Fit and center the complete 4:3 SDL surface without cropping. Keeping the
   // frame within both dimensions prevents horizontal overflow on phones.
@@ -112,7 +113,7 @@
       setTimeout(function () { document.title = "powder-wasm"; }, 0);
       setTimeout(function () { document.title = "powder-wasm"; }, 1000);
       updateControlsHint();
-      if (loadingEl) loadingEl.style.display = "none";
+      if (loadingText) loadingText.textContent = "Starting POWDER…";
       // Ask the browser not to evict the app cache or IndexedDB saves under
       // storage pressure. Browsers may decline based on their own policy, so
       // offline play still relies on the service-worker cache either way.
@@ -122,8 +123,6 @@
       updateSaveState();
       updateOfflineState();
       updateStorageState();
-      maybeShowQuickstart();
-      focusGame();
     },
 
     setStatus: function (text) {
@@ -132,6 +131,26 @@
     },
   };
   window.Module = Module;
+
+  function revealStartedGame() {
+    if (startupRevealed) return;
+    startupRevealed = true;
+    if (loadingEl) loadingEl.style.display = "none";
+    maybeShowQuickstart();
+    focusGame();
+  }
+
+  window.__powderMainStarted = function () {
+    // Emscripten reports runtime initialization before it calls POWDER's main().
+    // On Android Chrome, hiding the loader at that point can expose an empty
+    // canvas. Wait until the native entry point has actually been reached, then
+    // give the browser a short paint window for the initial SDL surface.
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        setTimeout(revealStartedGame, 750);
+      });
+    });
+  };
 
   function focusGame() { try { canvas.focus(); } catch (e) {} }
 

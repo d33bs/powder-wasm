@@ -75,6 +75,13 @@ main(int argc, char **argv)
     // POWDER's main loop runs until the browser tab goes away.  With
     // -sEXIT_RUNTIME=0 the runtime stays alive and Asyncify keeps the
     // single-threaded game loop cooperative (see ../sdl/hamfake.cpp).
+#ifdef __EMSCRIPTEN__
+    EM_ASM({
+        if (typeof window !== 'undefined' &&
+            typeof window.__powderMainStarted === 'function')
+            window.__powderMainStarted();
+    });
+#endif
     gba_main();
 
     SDL_Quit();
